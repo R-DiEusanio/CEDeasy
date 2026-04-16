@@ -1,0 +1,39 @@
+# --- JAVA / MAVEN (Backend) ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+build/
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+
+# --- NODE / VITE (Frontend) ---
+# Fondamentale: ignora le dipendenze scaricate
+node_modules/
+frontend/node_modules/
+
+# Ignora le build di produzione
+dist/
+frontend/dist/
+
+# --- IDE & TOOLS ---
+.idea/
+.vscode/
+*.iws
+*.iml
+*.ipr
+.DS_Store
+Thumbs.db
+
+# --- SECURITY ---
+# Non caricare mai le tue chiavi segrete
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.pem

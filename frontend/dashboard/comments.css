@@ -1,0 +1,11 @@
+@import "tailwindcss";
+
+.comments-section { @apply w-80 bg-slate-50 border-l border-slate-100 flex flex-col; }
+.comments-header { @apply p-6 border-b border-white font-bold text-slate-700; }
+.comments-list { @apply flex-1 overflow-y-auto p-6 space-y-4; }
+.comment-input-area { @apply p-6 bg-white border-t border-slate-100; }
+.comment-input-area input { @apply w-full bg-slate-100 border-none rounded-xl p-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none; }
+
+.comment-bubble {
+    @apply bg-white p-3 rounded-2xl shadow-sm border border-slate-100;
+}

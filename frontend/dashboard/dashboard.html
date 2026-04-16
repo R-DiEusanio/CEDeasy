@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEDeasy - Dashboard</title>
+    <link rel="stylesheet" href="../src/style.css">
+    </head>
+<body class="bg-slate-50 flex h-screen overflow-hidden">
+
+    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col p-6">
+        <h1 class="text-2xl font-black text-indigo-600 italic mb-10">CEDeasy</h1>
+        <nav class="flex-1 space-y-2">
+            <button class="w-full flex items-center space-x-3 p-3 bg-indigo-50 text-indigo-600 rounded-2xl font-bold">
+                <span>📅</span> <span>Calendario</span>
+            </button>
+        </nav>
+        <div class="pt-6 border-t border-slate-100">
+            <p id="user-display-name" class="font-bold text-slate-700 truncate text-sm italic">Caricamento...</p>
+            <span id="user-role-badge" class="text-[10px] font-black uppercase text-indigo-400"></span>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0">
+        <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8">
+            <h2 class="text-xl font-bold text-slate-800">Calendario Post</h2>
+            <button id="btn-new-post" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700">+ Nuovo Post</button>
+        </header>
+        <section class="flex-1 overflow-y-auto p-8">
+            <div id="calendar-grid" class="grid grid-cols-7 gap-4"></div>
+        </section>
+    </main>
+
+    <div id="post-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white w-full max-w-5xl rounded-[32px] shadow-2xl flex h-[80vh] overflow-hidden relative">
+            <button id="close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-3xl z-10">&times;</button>
+            
+            <div class="flex-1 p-8 overflow-y-auto">
+                <h3 id="modal-post-title" class="text-2xl font-black mb-4 text-slate-800"></h3>
+                <div id="modal-post-content" class="text-slate-600 mb-6"></div>
+                <div class="aspect-video bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-200">
+                    Nessun media allegato
+                </div>
+            </div>
+
+            <div class="w-80 bg-slate-50 border-l border-slate-100 flex flex-col">
+                <div class="p-6 font-bold text-slate-700 border-b border-white">Feedback</div>
+                <div id="comments-list" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
+                <form id="comment-form" class="p-6 bg-white border-t border-slate-100">
+                    <input type="text" id="comment-input" placeholder="Scrivi un commento..." class="w-full bg-slate-100 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="./dashboard.js"></script>
+</body>
+</html>
