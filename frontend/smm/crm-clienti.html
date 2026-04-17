@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="it">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CRM Clienti - CEDeasy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+
+        body.modal-active {
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 p-4 md:p-8">
+    <div class="max-w-6xl mx-auto">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-black text-slate-800">CRM Clienti</h1>
+                <p class="text-slate-500">Gestisci l'anagrafica e i canali social dei tuoi clienti</p>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="window.location.href='smm-dashboard.html'"
+                    class="px-4 py-2 text-slate-600 font-bold hover:bg-slate-200 rounded-xl transition">←
+                    Dashboard</button>
+                <button onclick="openModal('create')"
+                    class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-indigo-200 hover:bg-indigo-700 transition">+
+                    Nuovo Cliente</button>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-slate-50 border-b border-slate-100">
+                    <tr>
+                        <th class="p-4 font-bold text-slate-600">Attività</th>
+                        <th class="p-4 font-bold text-slate-600">Proprietario</th>
+                        <th class="p-4 font-bold text-slate-600">Social attivi</th>
+                        <th class="p-4 font-bold text-slate-600 text-right">Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="crmTableBody">
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="brandModal"
+        class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-50">
+        <div class="modal-overlay absolute w-full h-full bg-slate-900 opacity-50"></div>
+        <div
+            class="modal-container bg-white w-full max-w-lg mx-auto rounded-3xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+            <div class="p-8">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 id="modalTitle" class="text-2xl font-black text-slate-800">Nuovo Cliente</h2>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+                </div>
+
+                <form id="brandForm" class="space-y-4">
+                    <input type="hidden" id="brandId">
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Nome Attività *</label>
+                        <input type="text" id="name" required
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Proprietario</label>
+                            <input type="text" id="ownerName"
+                                class="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">Telefono</label>
+                            <input type="text" id="phone"
+                                class="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-bold text-slate-700 mb-1">Email</label>
+                        <input type="email" id="email"
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+
+                    <hr class="border-slate-100 my-4">
+                    <p class="text-xs font-bold text-slate-400 uppercase">Social Media (URL)</p>
+
+                    <div class="space-y-3">
+                        <input type="text" id="instagramUrl" placeholder="Link Instagram"
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none border-l-4 border-pink-500">
+                        <input type="text" id="tiktokUrl" placeholder="Link TikTok"
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none border-l-4 border-black">
+                        <input type="text" id="facebookUrl" placeholder="Link Facebook"
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none border-l-4 border-blue-600">
+                        <input type="text" id="telegramUrl" placeholder="Link Telegram"
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none border-l-4 border-sky-400">
+                        <input type="text" id="linkedinUrl" placeholder="Link LinkedIn"
+                            class="w-full p-3 bg-slate-50 rounded-xl outline-none border-l-4 border-blue-800">
+                    </div>
+
+                    <button type="submit"
+                        class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6 hover:bg-indigo-700 transition shadow-lg">Salva
+                        Cliente</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="smm-logic.js"></script>
+</body>
+
+</html>

@@ -58,9 +58,16 @@ regForm?.addEventListener('submit', async (e) => {
         alert("Errore: " + error.message);
     } else {
         console.log("Registrazione riuscita, dati:", data);
-        alert("Benvenuto in CEDeasy! Ti stiamo portando nella tua dashboard.");
-        
-        // Il percorso partendo dalla root (dove sta index.html)
-        window.location.href = './dashboard/dashboard.html';
+        alert("Benvenuto in CEDeasy!");
+
+        const role = document.getElementById('user-role').value;
+
+        if (role === 'SMM') {
+            // Reindirizza alla dashboard dedicata all'SMM
+            window.location.href = './smm/smm-dashboard.html';
+        } else {
+            // Reindirizza alla dashboard dedicata al Cliente
+            window.location.href = './client/dashboard.html';
+        }
     }
 });
