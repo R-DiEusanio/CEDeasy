@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calendario Editoriale - CEDeasy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script> 
+    <style>
+        .fc-event { cursor: pointer; border: none; padding: 2px; transition: opacity 0.2s; }
+        .fc-event:hover { opacity: 0.8; }
+        #calendar { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .modal { transition: opacity 0.25s ease; z-index: 100; }
+        body.modal-active { overflow: hidden; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-10">
+
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <a href="../crm-clienti.html" class="text-indigo-600 text-sm font-semibold hover:underline">← Torna ai Clienti</a>
+                <h1 class="text-3xl font-bold text-slate-800">Calendario Editoriale</h1>
+                <p id="brandNameDisplay" class="text-slate-500 text-sm italic">Verifica sessione in corso...</p>
+            </div>
+            <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium shadow-md transition-all">
+                + Nuovo Post
+            </button>
+        </div>
+
+        <div id="calendar"></div>
+    </div>
+
+    <div id="postModal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50"></div>
+        
+        <div class="modal-container bg-white w-11/12 md:max-w-md mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto">
+            <div class="modal-content py-6 text-left px-8">
+                <div class="flex justify-between items-center pb-4 border-b border-slate-100 mb-4">
+                    <p class="text-2xl font-bold text-slate-800" id="modalTitle">Nuovo Post</p>
+                    <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <form id="postForm" class="space-y-4">
+                    <input type="hidden" id="postId">
+                    
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Titolo Interno</label>
+                        <input type="text" id="title" required class="w-full border border-slate-200 p-2.5 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none transition-all">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Piattaforma</label>
+                            <select id="platform" class="w-full border border-slate-200 p-2.5 rounded-lg outline-none bg-white">
+                                <option value="INSTAGRAM">Instagram 📸</option>
+                                <option value="LINKEDIN">LinkedIn 🔗</option>
+                                <option value="FACEBOOK">Facebook 👥</option>
+                                <option value="TIKTOK">TikTok 🎵</option>
+                                <option value="TELEGRAM">Telegram ✈️</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Data/Ora</label>
+                            <input type="date" id="scheduledDate" required class="w-full border border-slate-200 p-2.5 rounded-lg outline-none">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Copy del Post</label>
+                        <textarea id="content" rows="3" class="w-full border border-slate-200 p-2.5 rounded-lg outline-none" placeholder="Scrivi qui il testo..."></textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Link Media (Drive/Canva)</label>
+                        <input type="url" id="mediaLink" class="w-full border border-slate-200 p-2.5 rounded-lg outline-none" placeholder="https://...">
+                    </div>
+
+                    <div class="flex justify-between pt-6 mt-4 border-t border-slate-100">
+                        <button type="button" id="deleteBtn" onclick="deletePost()" class="hidden text-red-600 font-bold hover:underline">Elimina Post</button>
+                        <div class="flex gap-3 ml-auto">
+                            <button type="button" onclick="closeModal()" class="text-slate-500 font-bold px-4">Annulla</button>
+                            <button type="submit" class="bg-indigo-600 text-white px-8 py-2.5 rounded-lg font-bold shadow-lg hover:bg-indigo-700 transition-all">Salva</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from '../api/supabase.js';
+
+        // --- VARIABILI GLOBALI ---
+        let calendar;
+        const urlParams = new URLSearchParams(window.location.search);
+        const brandId = urlParams.get('brandId');
+
+        // --- AUTH & LOGICA ---
+        async function getAuthData() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error || !session) {
+                    console.error("DEBUG - SESSIONE NON TROVATA O ERRORE:", error);
+                    // window.location.href = '../login/login.html';
+                    return null;
+                }
+                return { token: session.access_token, userId: session.user.id };
+            } catch (e) {
+                console.error("DEBUG - CRASH SUPABASE:", e);
+                return null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log("Inizializzazione per Brand:", brandId);
+            
+            if (!brandId) {
+                alert("Errore: Seleziona un brand dal CRM.");
+                window.location.href = '../crm-clienti.html';
+                return;
+            }
+
+            const auth = await getAuthData();
+            if (!auth) {
+                console.warn("Utente non loggato, reindirizzo...");
+                window.location.href = '../login/login.html';
+                return;
+            }
+
+            // Se siamo qui, la sessione è valida!
+            initCalendar(auth);
+            loadBrandInfo(auth);
+        });
+
+        // Recupera info sul brand per mostrarlo nel titolo
+        async function loadBrandInfo(auth) {
+            try {
+                const res = await fetch(`http://localhost:8080/api/brands/smm/${auth.userId}`, {
+                    headers: { 'Authorization': `Bearer ${auth.token}` }
+                });
+                const brands = await res.json();
+                const currentBrand = brands.find(b => b.id === brandId);
+                if (currentBrand) {
+                    document.getElementById('brandNameDisplay').innerText = `Stai gestendo: ${currentBrand.name}`;
+                } else {
+                    document.getElementById('brandNameDisplay').innerText = "Brand non trovato.";
+                }
+            } catch (err) { console.error(err); }
+        }
+
+        // --- CALENDARIO ---
+        function initCalendar(auth) {
+            const calendarEl = document.getElementById('calendar');
+            calendar = new FullCalendar.Calendar(calendarEl, {
+                initialView: window.innerWidth < 768 ? 'listWeek' : 'dayGridMonth',
+                locale: 'it',
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listWeek'
+                },
+                events: (info, success, failure) => fetchEvents(auth, info, success, failure),
+                eventClick: (info) => openModal(info.event.extendedProps),
+                dateClick: (info) => openModal({ scheduledDate: info.dateStr }),
+                height: 'auto'
+            });
+            calendar.render();
+        }
+
+        async function fetchEvents(auth, info, successCallback, failureCallback) {
+            try {
+                const response = await fetch(`http://localhost:8080/api/posts/brand/${brandId}`, {
+                    headers: { 'Authorization': `Bearer ${auth.token}` }
+                });
+                const posts = await response.json();
+                const events = posts.map(p => ({
+                    id: p.id,
+                    title: `[${p.platform}] ${p.title}`,
+                    start: p.scheduledDate,
+                    backgroundColor: getPlatformColor(p.platform),
+                    extendedProps: p
+                }));
+                successCallback(events);
+            } catch (error) { 
+                console.error("Errore fetch:", error);
+                failureCallback(error); 
+            }
+        }
+
+        function getPlatformColor(p) {
+            const c = { 'INSTAGRAM': '#e1306c', 'LINKEDIN': '#0077b5', 'TIKTOK': '#000000', 'FACEBOOK': '#1877f2', 'TELEGRAM': '#0088cc' };
+            return c[p] || '#6366f1';
+        }
+
+        // --- FUNZIONI MODALE (CRUD) ---
+        function openModal(post = null) {
+            const modal = document.getElementById('postModal');
+            const form = document.getElementById('postForm');
+            form.reset();
+            
+            if (post && post.id) {
+                document.getElementById('modalTitle').innerText = "Modifica Post";
+                document.getElementById('postId').value = post.id;
+                document.getElementById('title').value = post.title;
+                document.getElementById('platform').value = post.platform;
+                document.getElementById('scheduledDate').value = post.scheduledDate;
+                document.getElementById('content').value = post.content || '';
+                document.getElementById('mediaLink').value = post.mediaLink || '';
+                document.getElementById('deleteBtn').classList.remove('hidden');
+            } else {
+                document.getElementById('modalTitle').innerText = "Nuovo Post";
+                document.getElementById('postId').value = "";
+                document.getElementById('deleteBtn').classList.add('hidden');
+                if (post?.scheduledDate) document.getElementById('scheduledDate').value = post.scheduledDate;
+            }
+
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            document.body.classList.add('modal-active');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('postModal');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            document.body.classList.remove('modal-active');
+        }
+
+        // --- OPERAZIONI DB ---
+        document.getElementById('postForm').onsubmit = async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('postId').value;
+            const auth = await getAuthData();
+            
+            const postData = {
+                title: document.getElementById('title').value,
+                platform: document.getElementById('platform').value,
+                scheduledDate: document.getElementById('scheduledDate').value,
+                content: document.getElementById('content').value,
+                mediaLink: document.getElementById('mediaLink').value,
+                brand: { id: brandId }
+            };
+
+            const url = id ? `http://localhost:8080/api/posts/${id}` : `http://localhost:8080/api/posts`;
+            const method = id ? 'PUT' : 'POST';
+
+            try {
+                const res = await fetch(url, {
+                    method: method,
+                    headers: { 
+                        'Authorization': `Bearer ${auth.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(postData)
+                });
+                if (res.ok) {
+                    closeModal();
+                    calendar.refetchEvents();
+                } else { alert("Errore durante il salvataggio."); }
+            } catch (error) { console.error(error); }
+        };
+
+        async function deletePost() {
+            const id = document.getElementById('postId').value;
+            if (!confirm("Eliminare definitivamente questo post?")) return;
+            
+            const auth = await getAuthData();
+            try {
+                const res = await fetch(`http://localhost:8080/api/posts/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${auth.token}` }
+                });
+                if (res.ok) {
+                    closeModal();
+                    calendar.refetchEvents();
+                }
+            } catch (error) { alert("Errore eliminazione."); }
+        }
+
+        // Rendiamo le funzioni globali per i bottoni onclick
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.deletePost = deletePost;
+    </script>
+</body>
+</html>

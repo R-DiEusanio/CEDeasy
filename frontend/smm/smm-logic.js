@@ -3,6 +3,7 @@ import { supabase } from '../api/supabase.js';
 const API_BASE = "http://localhost:8080/api/brands";
 
 // --- UTILITY PER AUTH ---
+// Recupera il token e l'ID utente da Supabase
 async function getAuthData() {
     const { data: { session }, error } = await supabase.auth.getSession();
     if (error || !session) {
@@ -17,7 +18,6 @@ async function getAuthData() {
 }
 
 // --- GESTIONE MODALI (Apertura/Chiusura) ---
-// Questa è la parte che mancava e faceva bloccare il tasto!
 window.openModal = function(mode, brandData = null) {
     const modal = document.getElementById('brandModal');
     const title = document.getElementById('modalTitle');
@@ -77,18 +77,29 @@ async function loadCRMTable() {
                 <td class="p-4 font-bold text-indigo-600">${brand.name}</td>
                 <td class="p-4 text-slate-700">${brand.ownerName || '-'}</td>
                 <td class="p-4">
-                    <div class="flex gap-2">
-                        ${brand.instagramUrl ? '📸' : ''} ${brand.tiktokUrl ? '📱' : ''} 
-                        ${brand.telegramUrl ? '✈️' : ''} ${brand.linkedinUrl ? '🔗' : ''}
+                    <div class="flex gap-2 text-lg">
+                        ${brand.instagramUrl ? '📸' : ''} 
+                        ${brand.tiktokUrl ? '📱' : ''} 
+                        ${brand.facebookUrl ? '👥' : ''}
+                        ${brand.telegramUrl ? '✈️' : ''} 
+                        ${brand.linkedinUrl ? '🔗' : ''}
                     </div>
                 </td>
                 <td class="p-4 text-right">
-                    <button onclick='prepareEdit("${brand.id}")' class="text-blue-500 font-bold mr-3">Modifica</button>
-                    <button onclick="deleteBrand('${brand.id}')" class="text-red-500 font-bold">Elimina</button>
+                    <a href="smm-calendar.html?brandId=${brand.id}" 
+                       class="inline-block bg-indigo-100 text-indigo-700 px-3 py-1 rounded-lg font-bold text-sm mr-3 hover:bg-indigo-200 transition">
+                       📅 Calendario
+                    </a>
+                    
+                    <button onclick='prepareEdit("${brand.id}")' class="text-blue-500 font-bold mr-3 hover:underline text-sm">Modifica</button>
+                    <button onclick="deleteBrand('${brand.id}')" class="text-red-500 font-bold hover:underline text-sm">Elimina</button>
                 </td>
             </tr>
         `).join('');
-    } catch (e) { console.error("Errore caricamento:", e); }
+    } catch (e) { 
+        console.error("Errore caricamento:", e); 
+        tableBody.innerHTML = `<tr><td colspan="4" class="p-4 text-center text-red-500">Errore nel caricamento dei dati.</td></tr>`;
+    }
 }
 
 // --- PREPARA MODIFICA (Recupera dati del singolo brand) ---
@@ -97,32 +108,38 @@ window.prepareEdit = async function(id) {
     if (!auth) return;
 
     try {
+        // Recuperiamo la lista aggiornata per trovare il brand da modificare
         const response = await fetch(`${API_BASE}/smm/${auth.userId}`, {
             headers: { 'Authorization': `Bearer ${auth.token}` }
         });
         const brands = await response.json();
         const brand = brands.find(b => b.id === id);
         if (brand) window.openModal('edit', brand);
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Errore nel recupero dati per modifica:", e); }
 }
 
 // --- ELIMINAZIONE ---
 window.deleteBrand = async function(id) {
-    if (!confirm("Eliminare definitivamente questo cliente?")) return;
+    if (!confirm("Eliminare definitivamente questo cliente? Verranno eliminati anche tutti i suoi post.")) return;
     
     const auth = await getAuthData();
     if (!auth) return;
 
     try {
-        await fetch(`${API_BASE}/${id}`, {
+        const response = await fetch(`${API_BASE}/${id}`, {
             method: 'DELETE',
             headers: { 'Authorization': `Bearer ${auth.token}` }
         });
-        loadCRMTable();
-    } catch (e) { console.error(e); }
+
+        if (response.ok) {
+            loadCRMTable();
+        } else {
+            alert("Errore durante l'eliminazione.");
+        }
+    } catch (e) { console.error("Errore eliminazione:", e); }
 }
 
-// --- INVIO FORM (SALVATAGGIO) ---
+// --- INVIO FORM (SALVATAGGIO / UPDATE) ---
 document.getElementById('brandForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const auth = await getAuthData();
@@ -159,9 +176,14 @@ document.getElementById('brandForm')?.addEventListener('submit', async (e) => {
             window.closeModal();
             loadCRMTable();
         } else {
-            alert("Errore salvataggio: " + response.status);
+            const errorData = await response.json();
+            alert("Errore salvataggio: " + (errorData.message || response.status));
         }
-    } catch (e) { console.error(e); }
+    } catch (e) { 
+        console.error("Errore durante l'invio del form:", e);
+        alert("Errore di connessione col server.");
+    }
 });
 
+// Avvio automatico al caricamento della pagina
 document.addEventListener('DOMContentLoaded', loadCRMTable);

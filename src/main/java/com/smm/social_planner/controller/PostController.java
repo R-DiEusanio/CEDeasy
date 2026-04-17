@@ -17,25 +17,42 @@ public class PostController {
         this.postService = postService;
     }
 
-    // GET: Visualizza il calendario di un brand
+    // 1. LISTA: Visualizza tutti i post di un brand per il calendario
     @GetMapping("/brand/{brandId}")
     public List<Post> getCalendar(@PathVariable UUID brandId) {
         return postService.getBrandCalendar(brandId);
     }
 
-    // POST: Crea un nuovo post (SMM scrive il contenuto e mette il link a Drive)
+    // 2. READ: Visualizza i dettagli di un singolo post
+    @GetMapping("/{id}")
+    public Post getPost(@PathVariable UUID id) {
+        return postService.getPostById(id);
+    }
+
+    // 3. CREATE: Crea un nuovo post
     @PostMapping
     public Post createPost(@RequestBody Post post) {
         return postService.createPost(post);
     }
 
-    // PATCH: L'approvazione in un click! (Lato Cliente)
+    // 4. UPDATE: Modifica un post esistente (o lo sposta nel calendario)
+    @PutMapping("/{id}")
+    public Post updatePost(@PathVariable UUID id, @RequestBody Post post) {
+        return postService.updatePost(id, post);
+    }
+
+    // 5. DELETE: Elimina un post
+    @DeleteMapping("/{id}")
+    public void deletePost(@PathVariable UUID id) {
+        postService.deletePost(id);
+    }
+
+    // 6. APPROVAZIONE (Lato Cliente)
     @PatchMapping("/{id}/approve")
     public Post approve(@PathVariable UUID id) {
         return postService.approvePost(id);
     }
 
-    // PATCH: Rifiuto post (Lato Cliente)
     @PatchMapping("/{id}/reject")
     public Post reject(@PathVariable UUID id) {
         return postService.rejectPost(id);
