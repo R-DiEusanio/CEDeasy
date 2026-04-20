@@ -5,6 +5,7 @@ import com.smm.social_planner.service.PostService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @RestController
@@ -17,44 +18,41 @@ public class PostController {
         this.postService = postService;
     }
 
-    // 1. LISTA: Visualizza tutti i post di un brand per il calendario
+    // 1. LISTA: Tutti i post di un brand
     @GetMapping("/brand/{brandId}")
     public List<Post> getCalendar(@PathVariable UUID brandId) {
         return postService.getBrandCalendar(brandId);
     }
 
-    // 2. READ: Visualizza i dettagli di un singolo post
+    // 2. READ: Singolo post
     @GetMapping("/{id}")
     public Post getPost(@PathVariable UUID id) {
         return postService.getPostById(id);
     }
 
-    // 3. CREATE: Crea un nuovo post
+    // 3. CREATE
     @PostMapping
     public Post createPost(@RequestBody Post post) {
         return postService.createPost(post);
     }
 
-    // 4. UPDATE: Modifica un post esistente (o lo sposta nel calendario)
+    // 4. UPDATE (SMM sposta o modifica il post)
     @PutMapping("/{id}")
     public Post updatePost(@PathVariable UUID id, @RequestBody Post post) {
         return postService.updatePost(id, post);
     }
 
-    // 5. DELETE: Elimina un post
+    // 5. DELETE
     @DeleteMapping("/{id}")
     public void deletePost(@PathVariable UUID id) {
         postService.deletePost(id);
     }
 
-    // 6. APPROVAZIONE (Lato Cliente)
-    @PatchMapping("/{id}/approve")
-    public Post approve(@PathVariable UUID id) {
-        return postService.approvePost(id);
-    }
-
-    @PatchMapping("/{id}/reject")
-    public Post reject(@PathVariable UUID id) {
-        return postService.rejectPost(id);
+    // 6. UPDATE STATUS (Sincronizzato con il client-dashboard.js)
+    // Riceve un body JSON: { "status": "APPROVED" }
+    @PatchMapping("/{id}/status")
+    public Post updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+        String newStatus = payload.get("status");
+        return postService.updateStatus(id, newStatus);
     }
 }

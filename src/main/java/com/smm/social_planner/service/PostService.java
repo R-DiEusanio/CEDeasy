@@ -28,17 +28,16 @@ public class PostService {
     }
 
     public Post createPost(Post post) {
-        // Assicuriamoci che i timestamp siano settati
         post.setCreatedAt(OffsetDateTime.now());
         post.setUpdatedAt(OffsetDateTime.now());
+        // Impostiamo lo stato iniziale se non presente
+        if (post.getStatus() == null) post.setStatus("PENDING");
         return postRepository.save(post);
     }
 
     public Post updatePost(UUID id, Post details) {
-        Post existingPost = postRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Post non trovato"));
+        Post existingPost = getPostById(id);
 
-        // Aggiorniamo solo i campi che possono cambiare
         existingPost.setTitle(details.getTitle());
         existingPost.setContent(details.getContent());
         existingPost.setPlatform(details.getPlatform());
@@ -54,16 +53,14 @@ public class PostService {
         postRepository.deleteById(id);
     }
 
-    // Metodi per l'approvazione del cliente
-    public Post approvePost(UUID id) {
-        Post post = postRepository.findById(id).orElseThrow();
-        post.setStatus("APPROVED");
-        return postRepository.save(post);
-    }
-
-    public Post rejectPost(UUID id) {
-        Post post = postRepository.findById(id).orElseThrow();
-        post.setStatus("REJECTED");
+    // METODO UNIFICATO PER LO STATO
+    public Post updateStatus(UUID id, String newStatus) {
+        Post post = getPostById(id);
+        
+        // Aggiorniamo solo lo stato e il timestamp di modifica
+        post.setStatus(newStatus);
+        post.setUpdatedAt(OffsetDateTime.now());
+        
         return postRepository.save(post);
     }
 }

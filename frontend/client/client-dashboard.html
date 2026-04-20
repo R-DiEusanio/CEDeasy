@@ -3,56 +3,121 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CEDeasy - Dashboard</title>
-    <link rel="stylesheet" href="../src/style.css">
-    </head>
-<body class="bg-slate-50 flex h-screen overflow-hidden">
+    <title>Area Clienti - CEDeasy</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+    <style>
+        /* Personalizzazione per rendere il calendario più "leggero" per il cliente */
+        .fc { --fc-border-color: #f1f5f9; --fc-today-bg-color: #f8fafc; }
+        .fc-event { cursor: pointer; border: none !important; padding: 4px 6px; border-radius: 6px; }
+        .fc-toolbar-title { font-size: 1.25rem !important; font-weight: 800; color: #1e293b; text-transform: capitalize; }
+        .fc-button-primary { background-color: #4f46e5 !important; border: none !important; font-weight: 700 !important; }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen flex flex-col">
 
-    <aside class="w-64 bg-white border-r border-slate-200 flex flex-col p-6">
-        <h1 class="text-2xl font-black text-indigo-600 italic mb-10">CEDeasy</h1>
-        <nav class="flex-1 space-y-2">
-            <button class="w-full flex items-center space-x-3 p-3 bg-indigo-50 text-indigo-600 rounded-2xl font-bold">
-                <span>📅</span> <span>Calendario</span>
-            </button>
-        </nav>
-        <div class="pt-6 border-t border-slate-100">
-            <p id="user-display-name" class="font-bold text-slate-700 truncate text-sm italic">Caricamento...</p>
-            <span id="user-role-badge" class="text-[10px] font-black uppercase text-indigo-400"></span>
+    <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-20">
+        <div class="flex items-center gap-4">
+            <span class="text-2xl font-black text-indigo-600 italic tracking-tighter">CEDeasy</span>
+            <div class="h-6 w-px bg-slate-200"></div>
+            <div>
+                <h1 id="brandTitle" class="text-sm font-bold text-slate-800">Il mio Brand</h1>
+                <p class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Area Approvazione</p>
+            </div>
         </div>
-    </aside>
+        
+        <div class="flex items-center gap-4">
+            <div class="text-right">
+                <p id="clientName" class="text-sm font-bold text-slate-700 leading-none">Caricamento...</p>
+                <button onclick="handleLogout()" class="text-[11px] text-red-400 font-bold hover:text-red-600">Log out</button>
+            </div>
+            <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold">
+                C
+            </div>
+        </div>
+    </header>
 
-    <main class="flex-1 flex flex-col min-w-0">
-        <header class="h-20 bg-white border-b border-slate-200 flex items-center justify-between px-8">
-            <h2 class="text-xl font-bold text-slate-800">Calendario Post</h2>
-            <button id="btn-new-post" class="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-indigo-700">+ Nuovo Post</button>
-        </header>
-        <section class="flex-1 overflow-y-auto p-8">
-            <div id="calendar-grid" class="grid grid-cols-7 gap-4"></div>
-        </section>
+    <main class="flex-1 p-6 md:p-10 max-w-7xl mx-auto w-full">
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="w-10 h-10 bg-amber-100 text-amber-600 rounded-xl flex items-center justify-center text-xl">⏳</div>
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Da Approvare</p>
+                    <p id="count-pending" class="text-xl font-black text-slate-800">--</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-xl flex items-center justify-center text-xl">✅</div>
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Approvati</p>
+                    <p id="count-approved" class="text-xl font-black text-slate-800">--</p>
+                </div>
+            </div>
+            <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center text-xl">📅</div>
+                <div>
+                    <p class="text-xs text-slate-400 font-bold uppercase tracking-wider">Mese Corrente</p>
+                    <p id="current-month" class="text-xl font-black text-slate-800">--</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white rounded-3xl shadow-xl shadow-slate-200/50 p-6 md:p-8 border border-white">
+            <div id="calendar"></div>
+        </div>
     </main>
 
-    <div id="post-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-white w-full max-w-5xl rounded-[32px] shadow-2xl flex h-[80vh] overflow-hidden relative">
-            <button id="close-modal" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-3xl z-10">&times;</button>
-            
-            <div class="flex-1 p-8 overflow-y-auto">
-                <h3 id="modal-post-title" class="text-2xl font-black mb-4 text-slate-800"></h3>
-                <div id="modal-post-content" class="text-slate-600 mb-6"></div>
-                <div class="aspect-video bg-slate-50 rounded-2xl flex items-center justify-center text-slate-400 border-2 border-dashed border-slate-200">
-                    Nessun media allegato
+    <div id="postModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-white">
+            <div class="p-6 border-b border-slate-50 flex justify-between items-center">
+                <div id="modalStatusBadge" class="px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase"></div>
+                <button onclick="closeModal()" class="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:bg-slate-200 transition-all">&times;</button>
+            </div>
+
+            <div class="p-8 space-y-6">
+                <div>
+                    <p class="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.2em] mb-1">Titolo del Post</p>
+                    <h3 id="modalTitle" class="text-2xl font-black text-slate-800"></h3>
+                </div>
+
+                <div>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Testo / Copy</p>
+                    <div class="bg-slate-50 p-5 rounded-2xl border border-slate-100">
+                        <p id="modalContent" class="text-slate-600 leading-relaxed text-sm"></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between bg-slate-50 p-4 rounded-2xl">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-slate-400 uppercase">Data di uscita</span>
+                        <span id="modalDate" class="text-sm font-black text-slate-700"></span>
+                    </div>
+                    <div id="platformIcon" class="text-2xl"></div>
+                </div>
+
+                <div id="mediaBox" class="hidden">
+                    <a id="modalMediaLink" target="_blank" class="flex items-center justify-center gap-3 w-full py-4 bg-indigo-50 text-indigo-600 rounded-2xl font-bold hover:bg-indigo-100 transition-all border-2 border-dashed border-indigo-200">
+                        <span>🖼️ Guarda Grafica / Video</span>
+                    </a>
                 </div>
             </div>
 
-            <div class="w-80 bg-slate-50 border-l border-slate-100 flex flex-col">
-                <div class="p-6 font-bold text-slate-700 border-b border-white">Feedback</div>
-                <div id="comments-list" class="flex-1 overflow-y-auto p-6 space-y-4"></div>
-                <form id="comment-form" class="p-6 bg-white border-t border-slate-100">
-                    <input type="text" id="comment-input" placeholder="Scrivi un commento..." class="w-full bg-slate-100 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500">
-                </form>
+            <div id="modalActions" class="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
+                <button onclick="updatePostStatus('REVISION_REQUESTED')" class="flex-1 py-4 bg-white border border-red-200 text-red-500 font-bold rounded-2xl hover:bg-red-50 transition-all active:scale-95">
+                    Richiedi Modifica
+                </button>
+                <button onclick="updatePostStatus('APPROVED')" class="flex-1 py-4 bg-emerald-500 text-white font-bold rounded-2xl hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all active:scale-95">
+                    Approva Post
+                </button>
+            </div>
+            
+            <div id="modalFooterMessage" class="hidden p-6 bg-slate-50 text-center font-bold text-slate-400 text-sm italic">
+                Azione già registrata per questo post.
             </div>
         </div>
     </div>
 
-    <script type="module" src="./dashboard.js"></script>
+    <script type="module" src="client-dashboard.js"></script>
 </body>
 </html>

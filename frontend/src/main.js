@@ -1,5 +1,10 @@
 // Importiamo il client centralizzato
 import { supabase } from '/api/supabase.js'
+
+// --- 1. LOGICA LINK MAGICO (Cattura brandId dall'URL) ---
+const urlParams = new URLSearchParams(window.location.search);
+const invitedBrandId = urlParams.get('brandId');
+
 // --- LOGICA SELEZIONE RUOLO ---
 const btnSmm = document.getElementById('role-smm');
 const btnClient = document.getElementById('role-client');
@@ -26,6 +31,14 @@ const selectRole = (role) => {
     }
 };
 
+// Se l'utente arriva con un brandId, impostiamo automaticamente il ruolo "CLIENT"
+if (invitedBrandId) {
+    console.log("Invito rilevato per il brand:", invitedBrandId);
+    selectRole('CLIENT');
+    // Opzionale: nascondi i bottoni di selezione ruolo se vuoi che non cambino
+    // document.querySelector('.grid.grid-cols-2').style.display = 'none';
+}
+
 btnSmm?.addEventListener('click', () => selectRole('SMM'));
 btnClient?.addEventListener('click', () => selectRole('CLIENT'));
 
@@ -49,7 +62,9 @@ regForm?.addEventListener('submit', async (e) => {
         options: {
             data: {
                 full_name: fullName,
-                role: role
+                role: role,
+                // Aggiungiamo il brand_id nei metadati dell'utente
+                brand_id: invitedBrandId 
             }
         }
     });
@@ -58,16 +73,22 @@ regForm?.addEventListener('submit', async (e) => {
         alert("Errore: " + error.message);
     } else {
         console.log("Registrazione riuscita, dati:", data);
+
+        // Se la registrazione ha avuto successo e abbiamo un brandId, 
+        // aggiorniamo la tabella 'profiles' per rendere il dato permanente nel DB
+        if (data.user && invitedBrandId) {
+            await supabase
+                .from('profiles')
+                .update({ brand_id: invitedBrandId })
+                .eq('id', data.user.id);
+        }
+
         alert("Benvenuto in CEDeasy!");
 
-        const role = document.getElementById('user-role').value;
-
         if (role === 'SMM') {
-            // Reindirizza alla dashboard dedicata all'SMM
-            window.location.href = './smm/smm-dashboard.html';
+            window.location.href = '../smm/smm-dashboard.html';
         } else {
-            // Reindirizza alla dashboard dedicata al Cliente
-            window.location.href = './client/dashboard.html';
+            window.location.href = '../client/client-dashboard.html';
         }
     }
 });
