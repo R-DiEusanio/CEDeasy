@@ -1,14 +1,13 @@
 package com.smm.social_planner.repository;
 
-import com.smm.social_planner.model.Comment;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
-import java.util.UUID;
 import java.util.List;
+import java.util.UUID;
 
-@Repository
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import com.smm.social_planner.model.Comment;
+
 public interface CommentRepository extends JpaRepository<Comment, UUID> {
-    
-    // Prende tutta la conversazione di un post
-    List<Comment> findByPostIdOrderByCreatedAtAsc(UUID postId);
+    // Utile per caricare la cronologia dei commenti di un post specifico
+    List<Comment> findByPostIdOrderByCreatedAtDesc(UUID postId);
 }

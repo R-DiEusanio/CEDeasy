@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.jose.jws.SignatureAlgorithm;
@@ -25,10 +26,11 @@ public class SecurityConfiguration {
             .csrf(csrf -> csrf.disable())
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .authorizeHttpRequests(auth -> auth
+                // Permettiamo esplicitamente le richieste di controllo (OPTIONS)
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .anyRequest().authenticated()
             )
-            // Utilizziamo il decoder configurato per ES256
             .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(jwtDecoder())));
 
         return http.build();
@@ -36,7 +38,6 @@ public class SecurityConfiguration {
 
     @Bean
     public JwtDecoder jwtDecoder() {
-        // Configuriamo Nimbus per usare ES256 e scaricare le chiavi dal JWK Set di Supabase
         return NimbusJwtDecoder.withJwkSetUri("https://panbgxyffqcgixsttsbl.supabase.co/auth/v1/.well-known/jwks.json")
                 .jwsAlgorithm(SignatureAlgorithm.ES256)
                 .build();
@@ -45,9 +46,17 @@ public class SecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("*")); 
-        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        
+        // Specifica l'indirizzo del tuo frontend
+        configuration.setAllowedOrigins(List.of("http://localhost:5173")); 
+        
+        // Abilitiamo tutti i metodi necessari, inclusa la PATCH
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        
+        // Header necessari per far parlare Supabase e il tuo Backend
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Client-Info", "X-Supabase-Auth"));
+        
+        configuration.setAllowCredentials(true);
         
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);

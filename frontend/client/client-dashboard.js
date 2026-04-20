@@ -34,9 +34,9 @@ async function loadBrandInfo(brandId, token) {
         });
         const posts = await res.json();
 
-        // Aggiorna contatori
-        const pending = posts.filter(p => p.status === 'PENDING').length;
-        const approved = posts.filter(p => p.status === 'APPROVED').length;
+        // Usiamo .toUpperCase() per sicurezza
+        const pending = posts.filter(p => p.status?.toUpperCase() === 'PENDING').length;
+        const approved = posts.filter(p => p.status?.toUpperCase() === 'APPROVED').length;
         
         document.getElementById('count-pending').innerText = pending;
         document.getElementById('count-approved').innerText = approved;
@@ -72,7 +72,7 @@ function initClientCalendar(brandId, token) {
                 
                 success(posts.map(p => ({
                     id: p.id,
-                    title: p.title,
+                    title: (p.scheduledTime ? p.scheduledTime + " - " : "") + p.title,
                     start: p.scheduledDate,
                     backgroundColor: getStatusColor(p.status),
                     extendedProps: p
@@ -87,18 +87,29 @@ function initClientCalendar(brandId, token) {
 
 // --- 4. GESTIONE MODALE ---
 window.openModal = function(post) {
+    // Reset dello stato del box commenti ogni volta che apro il modale
+    document.getElementById('revisionNoteBox').classList.add('hidden');
+    document.getElementById('revisionComment').value = "";
+    
     currentPostId = post.id;
     const modal = document.getElementById('postModal');
     
-    // Popolamento testi
+    // Titolo e Contenuto
     document.getElementById('modalTitle').innerText = post.title;
     document.getElementById('modalContent').innerText = post.content || "Nessun testo inserito.";
-    document.getElementById('modalDate').innerText = post.scheduledDate;
     
-    // Gestione Badge Stato
+    // ORARIO: Mostriamo solo l'orario letterale (es. 10:25)
+    // Se per caso è vuoto, mettiamo dei trattini
+    document.getElementById('modalTime').innerText = post.scheduledTime || "--:--";
+    
+    // Gestione Badge Stato (come prima)
     const badge = document.getElementById('modalStatusBadge');
     badge.innerText = post.status;
     badge.className = `px-3 py-1 rounded-full text-[10px] font-black tracking-widest uppercase ${getStatusBadgeClass(post.status)}`;
+
+    // Icona Piattaforma dinamica
+    const platformIcons = { 'INSTAGRAM': '📸', 'LINKEDIN': '💼', 'TIKTOK': '🎵', 'FACEBOOK': '👥' };
+    document.getElementById('platformIcon').innerText = platformIcons[post.platform?.toUpperCase()] || '📱';
 
     // Gestione Link Media
     const mediaBox = document.getElementById('mediaBox');
@@ -130,8 +141,22 @@ window.closeModal = () => document.getElementById('postModal').classList.add('hi
 window.updatePostStatus = async function(newStatus) {
     if (!currentPostId) return;
 
+    const commentBox = document.getElementById('revisionNoteBox');
+    const commentTextArea = document.getElementById('revisionComment');
+    const commentText = commentTextArea.value;
+
+    // --- LOGICA A DUE TEMPI PER LA REVISIONE ---
+    if (newStatus === 'REVISION_REQUESTED' && commentBox.classList.contains('hidden')) {
+        // Primo click: mostriamo il campo di testo e cambiamo il focus
+        commentBox.classList.remove('hidden');
+        commentTextArea.focus();
+        return; // ESCIAMO DALLA FUNZIONE SENZA CHIAMARE IL SERVER
+    }
+
+    // --- SE ARRIVIAMO QUI, PROCEDIAMO CON IL SALVATAGGIO ---
     const auth = await getAuthData();
     try {
+        // 1. Aggiorniamo lo STATO del post
         const res = await fetch(`${API_BASE}/posts/${currentPostId}/status`, {
             method: 'PATCH',
             headers: { 
@@ -142,14 +167,29 @@ window.updatePostStatus = async function(newStatus) {
         });
 
         if (res.ok) {
+            // 2. Se è una revisione ed è stato scritto un commento, lo salviamo
+            if (newStatus === 'REVISION_REQUESTED' && commentText.trim() !== "") {
+                await fetch(`${API_BASE}/posts/${currentPostId}/comments`, {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json', 
+                        'Authorization': `Bearer ${auth.token}` 
+                    },
+                    body: JSON.stringify({ body: commentText })
+                });
+            }
+
+            // Pulizia e chiusura
+            commentTextArea.value = ""; 
+            commentBox.classList.add('hidden');
             closeModal();
-            calendar.refetchEvents(); // Aggiorna il calendario
-            loadBrandInfo(currentBrandId, auth.token); // Usa la variabile globale
+            calendar.refetchEvents();
+            loadBrandInfo(currentBrandId, auth.token);
         } else {
-            alert("Errore nell'aggiornamento dello stato.");
+            alert("Errore nell'aggiornamento.");
         }
     } catch (err) {
-        console.error("Errore aggiornamento post:", err);
+        console.error("Errore post-revisione:", err);
     }
 };
 
@@ -164,23 +204,25 @@ async function getAuthData() {
 }
 
 function getStatusColor(status) {
+    const s = status?.toUpperCase(); // Forza tutto in maiuscolo
     const colors = {
-        'PENDING': '#f59e0b', // Arancione
-        'APPROVED': '#10b981', // Verde
+        'PENDING': '#f59e0b',            // Arancione
+        'APPROVED': '#10b981',           // Verde
         'REVISION_REQUESTED': '#ef4444', // Rosso
-        'PUBLISHED': '#6366f1' // Viola
+        'PUBLISHED': '#6366f1'           // Viola
     };
-    return colors[status] || '#94a3b8';
+    return colors[s] || '#94a3b8';       // Grigio se non trova nulla
 }
 
 function getStatusBadgeClass(status) {
+    const s = status?.toUpperCase(); // Forza tutto in maiuscolo
     const classes = {
         'PENDING': 'bg-amber-100 text-amber-600',
         'APPROVED': 'bg-emerald-100 text-emerald-600',
         'REVISION_REQUESTED': 'bg-red-100 text-red-600',
         'PUBLISHED': 'bg-indigo-100 text-indigo-600'
     };
-    return classes[status] || 'bg-slate-100 text-slate-600';
+    return classes[s] || 'bg-slate-100 text-slate-600';
 }
 
 window.handleLogout = async () => {

@@ -97,7 +97,7 @@ async function initDashboardCalendar(brandId) {
                 const posts = await res.json();
                 success(posts.map(p => ({
                     id: p.id,
-                    title: `[${p.platform}] ${p.title}`,
+                    title: (p.scheduledTime ? p.scheduledTime + " - " : "") + `[${p.platform}] ${p.title}`,
                     start: p.scheduledDate,
                     backgroundColor: getPlatformColor(p.platform),
                     extendedProps: p
@@ -112,12 +112,13 @@ async function initDashboardCalendar(brandId) {
 }
 
 // --- 5. MODALE CRUD ---
-window.openPostModal = function(data = {}) {
+window.openPostModal = async function(data = {}) {
     const brandId = localStorage.getItem('activeBrandId'); // Usiamo la chiave corretta
     if (!brandId) return alert("Seleziona prima un cliente!");
 
     const modal = document.getElementById('postModal');
     const deleteBtn = document.getElementById('deletePostBtn');
+    const commentsSection = document.getElementById('commentsSection');
     document.getElementById('postForm').reset();
     
     if (data.id) {
@@ -126,14 +127,22 @@ window.openPostModal = function(data = {}) {
         document.getElementById('title').value = data.title;
         document.getElementById('content').value = data.content;
         document.getElementById('scheduledDate').value = data.scheduledDate;
+        document.getElementById('scheduledTime').value = data.scheduledTime || "";
         document.getElementById('platform').value = data.platform;
         document.getElementById('mediaLink').value = data.mediaLink || "";
         deleteBtn.classList.remove('hidden');
+        
+        // Carica i commenti per questo post
+        const auth = await getAuthData();
+        loadComments(data.id, auth.token);
+        commentsSection.classList.remove('hidden');
     } else {
         document.getElementById('modalTitle').innerText = "Nuovo Post";
         document.getElementById('postId').value = "";
         document.getElementById('scheduledDate').value = data.scheduledDate || "";
+        document.getElementById('scheduledTime').value = "";
         deleteBtn.classList.add('hidden');
+        commentsSection.classList.add('hidden');
     }
 
     modal.classList.remove('hidden');
@@ -152,6 +161,7 @@ document.getElementById('postForm').onsubmit = async (e) => {
         title: document.getElementById('title').value,
         content: document.getElementById('content').value,
         scheduledDate: document.getElementById('scheduledDate').value,
+        scheduledTime: document.getElementById('scheduledTime').value,
         platform: document.getElementById('platform').value,
         mediaLink: document.getElementById('mediaLink').value,
         brand: { id: brandId }
@@ -187,6 +197,36 @@ document.getElementById('deletePostBtn').onclick = async () => {
         calendar.refetchEvents();
     }
 };
+
+// --- 7. CARICAMENTO COMMENTI ---
+async function loadComments(postId, token) {
+    const container = document.getElementById('commentsTimeline');
+    container.innerHTML = '<p class="text-xs text-slate-400">Caricamento...</p>';
+
+    try {
+        const res = await fetch(`${API_BASE}/posts/${postId}/comments`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const comments = await res.json();
+
+        if (comments.length === 0) {
+            container.innerHTML = '<p class="text-xs text-slate-400 italic">Nessun commento presente.</p>';
+            return;
+        }
+
+        container.innerHTML = comments.map(c => `
+            <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-[10px] font-bold text-indigo-500 uppercase">Cliente</span>
+                    <span class="text-[9px] text-slate-400">${new Date(c.createdAt).toLocaleString('it-IT')}</span>
+                </div>
+                <p class="text-sm text-slate-700 leading-relaxed">${c.body}</p>
+            </div>
+        `).join('');
+    } catch (err) {
+        container.innerHTML = '<p class="text-xs text-red-400">Errore nel caricamento commenti.</p>';
+    }
+}
 
 // --- UTILS ---
 async function getAuthData() {

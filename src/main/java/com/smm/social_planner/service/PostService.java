@@ -42,6 +42,7 @@ public class PostService {
         existingPost.setContent(details.getContent());
         existingPost.setPlatform(details.getPlatform());
         existingPost.setScheduledDate(details.getScheduledDate());
+        existingPost.setScheduledTime(details.getScheduledTime());
         existingPost.setMediaLink(details.getMediaLink());
         existingPost.setInternalNotes(details.getInternalNotes());
         existingPost.setUpdatedAt(OffsetDateTime.now());

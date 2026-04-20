@@ -44,7 +44,10 @@ public class Post {
     @Column(name = "scheduled_date", nullable = false)
     private LocalDate scheduledDate;
 
-    private String status = "DRAFT";
+    @Column(name = "scheduled_time")
+    private String scheduledTime;
+
+    private String status = "PENDING";
 
     @Column(name = "work_mode")
     private String workMode = "FULL_MANAGEMENT";
