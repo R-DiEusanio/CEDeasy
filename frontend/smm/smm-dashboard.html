@@ -1,25 +1,87 @@
 <!DOCTYPE html>
 <html lang="it">
+
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CEDeasy - Dashboard SMM</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+
     <style>
-        /* Personalizzazione FullCalendar per adattarsi al design */
+        /* --- PERSONALIZZAZIONE FULLCALENDAR --- */
         .fc { --fc-border-color: #e2e8f0; --fc-button-bg-color: #4f46e5; --fc-button-border-color: #4f46e5; }
         .fc-event { cursor: pointer; border-radius: 6px; padding: 2px 4px; border: none; }
         .brand-link.active { background-color: #eef2ff; color: #4f46e5; font-weight: 700; border-right: 4px solid #4f46e5; }
+
+        /* --- GESTIONE SIDEBAR MOBILE --- */
+        #sidebar { transition: transform 0.3s ease-in-out; }
+
+        @media (max-width: 1024px) {
+            #sidebar {
+                display: flex !important;
+                position: fixed;
+                left: 0; top: 0; bottom: 0;
+                width: 280px;
+                z-index: 50;
+                background: white;
+                box-shadow: 10px 0 15px rgba(0, 0, 0, 0.1);
+                transform: translateX(-100%);
+            }
+            #sidebar.open { transform: translateX(0); }
+            body.menu-open { overflow: hidden; }
+        }
+
+        /* --- TASTO NUOVO POST "FLOAT" SU MOBILE --- */
+        @media (max-width: 640px) {
+            #newPostContainer { position: fixed; bottom: 20px; right: 20px; z-index: 30; }
+            #newPostContainer button {
+                width: 60px; height: 60px; border-radius: 50%;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 24px; padding: 0;
+                box-shadow: 0 4px 20px rgba(16, 185, 129, 0.5);
+            }
+        }
+
+        #menuOverlay { transition: opacity 0.3s ease-in-out; }
+        #menuOverlay.visible { display: block !important; }
+
+        @media (max-width: 640px) {
+            .fc .fc-toolbar-title { font-size: 1.1rem !important; margin: 0 !important; white-space: nowrap; }
+            .fc .fc-toolbar { flex-direction: row !important; gap: 5px; margin-bottom: 1rem !important; display: flex; justify-content: space-between; align-items: center; }
+            .fc .fc-button { padding: 0.4rem 0.6rem !important; font-size: 0.8rem !important; }
+        }
     </style>
 </head>
+
 <body class="bg-slate-50 flex h-screen overflow-hidden">
 
-    <aside class="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm">
-        <div class="p-6 text-2xl font-black text-indigo-600 italic">CEDeasy</div>
+    <div id="menuOverlay" class="hidden fixed inset-0 bg-black/50 z-40 lg:hidden"></div>
+
+    <aside id="sidebar" class="hidden lg:flex w-72 bg-white border-r border-slate-200 flex-col shadow-sm">
+        <div class="p-4 flex justify-between items-center lg:hidden border-b border-slate-100">
+            <span onclick="showGlobalDashboard()" class="font-bold text-indigo-600 italic text-lg tracking-tight cursor-pointer">CEDeasy</span>
+            <button id="closeSidebarBtn" class="text-3xl text-slate-300 hover:text-slate-600 transition-all">&times;</button>
+        </div>
+
+        <div id="logoHome" class="p-6 text-2xl font-black text-indigo-600 italic hidden lg:block cursor-pointer">CEDeasy</div>
+
         <nav class="flex-1 px-4 overflow-y-auto">
-            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest px-2 mb-4">I tuoi Clienti</p>
-            <ul id="recentBrands" class="space-y-1 mb-6">
-                </ul>
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-4">Navigazione</p>
+            
+            <ul class="space-y-1 mb-6">
+                <li>
+                    <button onclick="showGlobalDashboard()" 
+                            class="w-full text-left px-4 py-2.5 rounded-xl text-slate-600 hover:bg-indigo-50 hover:text-indigo-600 transition-all flex items-center gap-2 font-bold italic">
+                        <span>🏠</span> Dashboard Globale
+                    </button>
+                </li>
+            </ul>
+
+            <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 mb-4">I tuoi Clienti</p>
+            <ul id="recentBrands" class="space-y-1 mb-6"></ul>
+
             <a href="crm-clienti.html" class="flex items-center px-2 py-3 text-sm font-semibold text-slate-600 hover:bg-slate-50 rounded-xl transition-all">
                 📁 Gestione Clienti (CRM)
             </a>
@@ -27,92 +89,96 @@
     </aside>
 
     <main class="flex-1 flex flex-col">
-        <header class="p-6 bg-white border-b border-slate-200 flex justify-between items-center">
-            <div>
-                <h2 class="text-xl font-bold text-slate-800">Calendario Editoriale</h2>
-                <p id="currentBrandName" class="text-sm text-slate-500 italic">Seleziona un cliente per iniziare</p>
+        <header class="p-4 lg:p-6 bg-white border-b border-slate-200 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <button id="mobileMenuBtn" class="lg:hidden p-2 text-slate-600 text-2xl hover:bg-slate-50 rounded-lg">☰</button>
+                <div>
+                    <h2 class="text-lg lg:text-xl font-bold text-slate-800 leading-tight">Dashboard</h2>
+                    <p id="currentBrandName" class="text-xs lg:text-sm text-slate-500 italic">Attività Globale</p>
+                </div>
             </div>
+
             <div class="flex gap-2">
-                <button onclick="copyInviteLink()" class="flex items-center gap-2 bg-white text-indigo-600 border border-indigo-100 px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-indigo-50 transition-all">
-                    🔗 Copia Link Invito Cliente
-                </button>
-                <button onclick="openPostModal()" class="bg-emerald-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md hover:bg-emerald-600 transition-all">
-                    + Nuovo Post
+                <button onclick="copyInviteLink()" class="hidden sm:flex items-center gap-2 bg-white text-indigo-600 border border-indigo-100 px-4 py-2 rounded-lg font-bold text-sm shadow-sm hover:bg-indigo-50 transition-all">
+                    🔗 <span class="hidden md:inline">Copia Link Invito</span>
                 </button>
             </div>
         </header>
 
-        <div class="p-8 overflow-y-auto flex-1">
-            <div id="main-content" class="bg-white rounded-3xl p-6 shadow-sm min-h-[600px] relative">
-                <div id="calendar-placeholder" class="flex flex-col items-center justify-center h-96 text-slate-400">
+        <div class="p-4 lg:p-8 overflow-y-auto flex-1">
+            <div id="main-content" class="bg-white rounded-3xl p-4 lg:p-6 shadow-sm min-h-[500px] relative">
+                <div id="calendar-placeholder" class="flex flex-col items-center justify-center min-h-[400px] text-slate-400">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 opacity-20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
-                    <p class="text-lg font-medium">Scegli un brand dalla lista a sinistra</p>
+                    <p class="text-center font-medium">Scegli un brand o visualizza la lista attività</p>
                 </div>
-                
                 <div id="calendar" class="hidden"></div>
+            </div>
+
+            <div id="newPostContainer">
+                <button onclick="openPostModal()" class="bg-emerald-500 text-white px-4 py-2 rounded-xl font-bold hover:bg-emerald-600 transition-all shadow-lg">
+                    <span>+</span><span class="hidden sm:inline ml-2">Nuovo Post</span>
+                </button>
             </div>
         </div>
     </main>
 
-    <div id="postModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center">
+    <div id="postModal" class="fixed inset-0 bg-black/60 hidden flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-hidden flex flex-col transition-all">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white z-10">
                 <h3 class="text-xl font-bold text-slate-800" id="modalTitle">Nuovo Post</h3>
-                <button onclick="closePostModal()" class="text-slate-400 hover:text-slate-600 text-2xl">&times;</button>
+                <button onclick="closePostModal()" class="text-slate-400 hover:text-slate-600 text-3xl">&times;</button>
             </div>
-            
-            <form id="postForm">
+
+            <form id="postForm" class="flex-1 overflow-y-auto">
                 <input type="hidden" id="postId">
-                <div class="p-6 space-y-4">
+                <div id="postFieldsContainer" class="p-6 space-y-5">
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Titolo Interno</label>
-                        <input type="text" id="title" required class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Titolo Interno</label>
+                        <input type="text" id="title" required class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Copy (Contenuto Social)</label>
-                        <textarea id="content" rows="4" class="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Cosa scriverai nel post?"></textarea>
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Copy (Social)</label>
+                        <textarea id="content" rows="4" class="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" placeholder="Scrivi il copy..."></textarea>
                     </div>
-                    <div class="grid grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-1">Data</label>
-                            <input type="date" id="scheduledDate" required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none">
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Data</label>
+                            <input type="date" id="scheduledDate" required class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none">
                         </div>
                         <div>
-                            <label class="block text-sm font-semibold text-slate-700 mb-1">Piattaforma</label>
-                            <select id="platform" required class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none bg-white">
-                                <option value="INSTAGRAM">Instagram 📸</option>
-                                <option value="FACEBOOK">Facebook 👥</option>
-                                <option value="LINKEDIN">LinkedIn 🔗</option>
-                                <option value="TIKTOK">TikTok 🎵</option>
-                                <option value="TELEGRAM">Telegram ✈️</option>
-                            </select>
+                            <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Orario</label>
+                            <input type="time" id="scheduledTime" class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none font-bold">
                         </div>
                     </div>
                     <div>
-                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Orario Pubblicazione</label>
-                        <input type="time" id="scheduledTime" class="w-full p-3 rounded-xl border border-slate-100 bg-slate-50 focus:ring-2 focus:ring-indigo-500 outline-none font-bold text-slate-700">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Piattaforma</label>
+                        <select id="platform" required class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none bg-white">
+                            <option value="INSTAGRAM">Instagram 📸</option>
+                            <option value="FACEBOOK">Facebook 👥</option>
+                            <option value="LINKEDIN">LinkedIn 🔗</option>
+                            <option value="TIKTOK">TikTok 🎵</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-1">Link Media (Drive/Canva)</label>
-                        <input type="url" id="mediaLink" placeholder="https://..." class="w-full px-4 py-2 border border-slate-200 rounded-lg outline-none">
+                        <label class="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Link Media</label>
+                        <input type="url" id="mediaLink" placeholder="https://..." class="w-full px-4 py-3 border border-slate-200 rounded-xl outline-none">
                     </div>
                 </div>
-                
-                <div class="p-6 bg-slate-50 flex justify-between items-center">
-                    <button type="button" id="deletePostBtn" class="text-red-500 font-bold hover:underline hidden">Elimina Post</button>
-                    <div class="flex gap-3 ml-auto">
-                        <button type="button" onclick="closePostModal()" class="px-4 py-2 text-slate-500 font-bold">Annulla</button>
-                        <button type="submit" class="px-6 py-2 bg-indigo-600 text-white font-bold rounded-lg hover:bg-indigo-700 shadow-md transition-all">Salva</button>
+
+                <div id="modalFooter" class="p-6 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row justify-between items-center gap-4 sticky bottom-0">
+                    <button type="button" id="deletePostBtn" class="text-red-500 font-bold hover:underline hidden text-sm">Elimina Post</button>
+                    <div class="flex gap-3 w-full sm:w-auto ml-auto">
+                        <button type="button" onclick="closePostModal()" class="flex-1 sm:flex-none px-4 py-3 text-slate-500 font-bold">Annulla</button>
+                        <button type="submit" id="savePostBtn" class="flex-1 sm:flex-none px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md">Salva</button>
                     </div>
                 </div>
             </form>
 
-            <div id="commentsSection" class="hidden mt-6 border-t border-slate-100 pt-4 px-6 pb-6 max-h-64 overflow-y-auto">
-                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Cronologia Revisioni</h4>
-                <div id="commentsTimeline" class="space-y-4">
-                </div>
+            <div id="commentsSection" class="hidden mt-0 border-t border-slate-100 bg-white p-6 pb-10 overflow-y-auto">
+                <h4 class="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-4">Cronologia Revisioni</h4>
+                <div id="commentsTimeline" class="space-y-4"></div>
             </div>
         </div>
     </div>

@@ -10,6 +10,9 @@ import com.smm.social_planner.model.Post;
 
 @Repository
 public interface PostRepository extends JpaRepository<Post, UUID> {
-    // Trova tutti i post di un brand specifico e caricali in ordine di data
     List<Post> findByBrandIdOrderByScheduledDateAsc(UUID brandId);
+
+    // NUOVO: Cerca i post di tutti i brand che appartengono a un certo SMM
+    // Ordinati per l'ultima modifica (il più recente in alto)
+    List<Post> findByBrand_SmmIdOrderByUpdatedAtDesc(UUID smmId);
 }

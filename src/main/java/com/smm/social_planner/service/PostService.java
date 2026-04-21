@@ -27,10 +27,14 @@ public class PostService {
         return postRepository.findByBrandIdOrderByScheduledDateAsc(brandId);
     }
 
+    // Recupera l'attività globale per l'SMM
+    public List<Post> getRecentPostsBySmm(UUID smmId) {
+        return postRepository.findByBrand_SmmIdOrderByUpdatedAtDesc(smmId);
+    }
+
     public Post createPost(Post post) {
         post.setCreatedAt(OffsetDateTime.now());
         post.setUpdatedAt(OffsetDateTime.now());
-        // Impostiamo lo stato iniziale se non presente
         if (post.getStatus() == null) post.setStatus("PENDING");
         return postRepository.save(post);
     }
@@ -45,6 +49,8 @@ public class PostService {
         existingPost.setScheduledTime(details.getScheduledTime());
         existingPost.setMediaLink(details.getMediaLink());
         existingPost.setInternalNotes(details.getInternalNotes());
+        
+        // Fondamentale per l'ordine del Global Feed
         existingPost.setUpdatedAt(OffsetDateTime.now());
 
         return postRepository.save(existingPost);
@@ -54,14 +60,10 @@ public class PostService {
         postRepository.deleteById(id);
     }
 
-    // METODO UNIFICATO PER LO STATO
     public Post updateStatus(UUID id, String newStatus) {
         Post post = getPostById(id);
-        
-        // Aggiorniamo solo lo stato e il timestamp di modifica
         post.setStatus(newStatus);
         post.setUpdatedAt(OffsetDateTime.now());
-        
         return postRepository.save(post);
     }
 }
