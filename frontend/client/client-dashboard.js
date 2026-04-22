@@ -1,6 +1,6 @@
 import { supabase } from '../api/supabase.js';
 
-const API_BASE = "http://localhost:8080/api";
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 let calendar;
 let currentPostId = null;
 let currentBrandId = null;

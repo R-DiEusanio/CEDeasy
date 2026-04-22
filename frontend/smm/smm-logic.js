@@ -1,6 +1,6 @@
 import { supabase } from '../api/supabase.js';
 
-const API_BASE = "http://localhost:8080/api/brands";
+const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api/brands`;
 
 // --- UTILITY PER AUTH ---
 // Recupera il token e l'ID utente da Supabase

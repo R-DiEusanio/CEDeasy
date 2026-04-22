@@ -37,3 +37,18 @@ Thumbs.db
 .env.test.local
 .env.production.local
 *.pem
+
+# --- SECURITY ---
+# Non caricare mai le tue chiavi segrete
+.env
+*.env.local
+# ... (altre righe già presenti)
+
+# File di configurazione locale Spring Boot (contiene password in chiaro)
+src/main/resources/application-dev.properties
+
+# Frontend Environment Files
+frontend/.env
+frontend/.env.development
+frontend/.env.production
+frontend/.env.local
