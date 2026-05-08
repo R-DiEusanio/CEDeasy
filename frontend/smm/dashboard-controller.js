@@ -2,6 +2,7 @@ import { supabase } from '../api/supabase.js';
 
 const API_BASE = `${import.meta.env.VITE_API_BASE_URL}/api`;
 let calendar;
+
 // --- GESTIONE SIDEBAR MOBILE ---
 function toggleSidebar(show) {
     const sidebar = document.getElementById('sidebar');
@@ -26,12 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const auth = await getAuthData();
     if (!auth) return;
 
-    // Listeners Menu
     document.getElementById('mobileMenuBtn')?.addEventListener('click', () => toggleSidebar(true));
     document.getElementById('closeSidebarBtn')?.addEventListener('click', () => toggleSidebar(false));
     document.getElementById('menuOverlay')?.addEventListener('click', () => toggleSidebar(false));
-    
-    // Il logo riporta sempre alla dashboard globale
     document.getElementById('logoHome')?.addEventListener('click', () => showGlobalDashboard(auth));
 
     document.getElementById('recentBrands').addEventListener('click', (e) => {
@@ -74,7 +72,7 @@ async function loadSidebarBrands(auth) {
     } catch (err) { console.error("Errore sidebar:", err); }
 }
 
-// --- 3. SELEZIONE BRAND (IBRIDA PC/MOBILE) ---
+// --- 3. SELEZIONE BRAND ---
 window.selectBrand = async function(brandId, brandName = "") {
     const auth = await getAuthData();
     if (!auth) return;
@@ -90,7 +88,6 @@ window.selectBrand = async function(brandId, brandName = "") {
     }
 
     const isMobile = window.innerWidth < 768;
-
     if (isMobile) {
         document.getElementById('calendar').classList.add('hidden');
         document.getElementById('calendar-placeholder').classList.remove('hidden');
@@ -102,17 +99,14 @@ window.selectBrand = async function(brandId, brandName = "") {
     }
 };
 
-// --- 4. GLOBAL DASHBOARD (FEED ATTIVITÀ) ---
+// --- 4. GLOBAL FEED ---
 window.showGlobalDashboard = async function(auth) {
     if (!auth) auth = await getAuthData();
-    
     localStorage.removeItem('activeBrandId');
     document.querySelectorAll('.brand-link').forEach(btn => btn.classList.remove('active'));
     document.getElementById('currentBrandName').innerText = "Global Activity Feed";
-
     document.getElementById('calendar').classList.add('hidden');
     document.getElementById('calendar-placeholder').classList.remove('hidden');
-
     loadGlobalActivity(auth);
 };
 
@@ -120,25 +114,21 @@ async function loadGlobalActivity(auth) {
     const placeholder = document.getElementById('calendar-placeholder');
     placeholder.innerHTML = `
         <div class="w-full max-w-2xl mx-auto py-4">
-            <h3 class="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2 px-4 sm:px-0">
-                🔔 Ultimi aggiornamenti (Tutti i clienti)
+            <h3 class="text-xl font-bold text-slate-800 mb-6 px-4 sm:px-0 flex items-center gap-2">
+                🔔 Ultimi aggiornamenti
             </h3>
-            <div id="globalFeed" class="space-y-4 px-4 sm:px-0 text-left">
-                <p class="text-slate-400 italic">Caricamento attività...</p>
-            </div>
+            <div id="globalFeed" class="space-y-4 px-4 sm:px-0 text-left"></div>
         </div>
     `;
-
     try {
         const res = await fetch(`${API_BASE}/posts/smm/${auth.userId}/recent`, {
             headers: { 'Authorization': `Bearer ${auth.token}` }
         });
         const posts = await res.json();
         renderFeed(posts, "globalFeed");
-    } catch (err) { console.error("Errore feed globale:", err); }
+    } catch (err) { console.error(err); }
 }
 
-// Feed di un SINGOLO brand con tasto RITORNA AL GLOBAL FEED
 async function loadBrandFeed(brandId, brandName, auth) {
     const placeholder = document.getElementById('calendar-placeholder');
     placeholder.innerHTML = `
@@ -146,15 +136,12 @@ async function loadBrandFeed(brandId, brandName, auth) {
             <div class="flex flex-col gap-1 mb-6 px-4">
                 <h3 class="text-xl font-bold text-slate-800">📂 Post di: ${brandName}</h3>
                 <button onclick="showGlobalDashboard()" class="text-indigo-600 font-bold text-xs text-left hover:underline flex items-center gap-1">
-                    ← Ritorna al global feed
+                    ← Ritorna al feed globale
                 </button>
             </div>
-            <div id="globalFeed" class="space-y-4 px-4 text-left">
-                <p class="text-slate-400 italic">Caricamento post...</p>
-            </div>
+            <div id="globalFeed" class="space-y-4 px-4 text-left"></div>
         </div>
     `;
-
     try {
         const res = await fetch(`${API_BASE}/posts/brand/${brandId}`, {
             headers: { 'Authorization': `Bearer ${auth.token}` }
@@ -162,37 +149,42 @@ async function loadBrandFeed(brandId, brandName, auth) {
         const posts = await res.json();
         posts.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         renderFeed(posts, "globalFeed");
-    } catch (err) { console.error("Errore feed brand:", err); }
+    } catch (err) { console.error(err); }
 }
 
 function renderFeed(posts, containerId) {
     const container = document.getElementById(containerId);
     if (!posts || posts.length === 0) {
-        container.innerHTML = '<p class="text-slate-400">Nessuna attività registrata.</p>';
+        container.innerHTML = '<p class="text-slate-400 p-4">Nessuna attività.</p>';
         return;
     }
-
-    container.innerHTML = posts.map(p => `
-        <div onclick="openPostModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" 
-             class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex justify-between items-center group">
-            <div class="flex flex-col gap-1">
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">${p.brand ? p.brand.name : p.platform}</span>
-                    <span class="w-1 h-1 rounded-full bg-slate-300"></span>
-                    <span class="text-[10px] text-slate-400">${new Date(p.updatedAt).toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}</span>
+    container.innerHTML = posts.map(p => {
+        // Icona matita se è in revisione
+        const pencilIcon = p.status === 'REVISION_REQUESTED' ? '<span class="text-amber-600 ml-1">✎</span>' : '';
+        return `
+            <div onclick="openPostModal(${JSON.stringify(p).replace(/"/g, '&quot;')})" 
+                 class="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm hover:shadow-md transition-all cursor-pointer flex justify-between items-center group">
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] font-black text-indigo-500 uppercase tracking-widest">${p.brand ? p.brand.name : p.platform}</span>
+                        <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                        <span class="text-[10px] text-slate-400">${new Date(p.updatedAt).toLocaleString('it-IT', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}</span>
+                    </div>
+                    <h4 class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors truncate max-w-[180px] sm:max-w-xs">
+                        ${p.title} ${pencilIcon}
+                    </h4>
                 </div>
-                <h4 class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors truncate max-w-[180px] sm:max-w-xs">${p.title}</h4>
+                <div class="flex items-center gap-3">
+                    <span class="px-3 py-1 rounded-full text-[10px] font-bold" style="background-color: ${getStatusColor(p.status)}20; color: ${getStatusColor(p.status)}">
+                        ${getStatusLabel(p.status)}
+                    </span>
+                </div>
             </div>
-            <div class="flex items-center gap-3">
-                <span class="px-3 py-1 rounded-full text-[10px] font-bold" style="background-color: ${getStatusColor(p.status)}20; color: ${getStatusColor(p.status)}">
-                    ${getStatusLabel(p.status)}
-                </span>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-// --- 5. CALENDARIO (PC ONLY) ---
+// --- 5. CALENDARIO ---
 async function initDashboardCalendar(brandId) {
     const auth = await getAuthData();
     const calendarEl = document.getElementById('calendar');
@@ -201,18 +193,13 @@ async function initDashboardCalendar(brandId) {
     calendar = new FullCalendar.Calendar(calendarEl, {
         initialView: 'dayGridMonth',
         locale: 'it',
-        firstDay: 1, 
-        height: 'auto',
         headerToolbar: {
             left: 'prev,next today',
             center: 'title',
             right: 'dayGridMonth,listBtn'
         },
         customButtons: {
-            listBtn: {
-                text: 'list',
-                click: function() { showGlobalDashboard(auth); }
-            }
+            listBtn: { text: 'list', click: function() { showGlobalDashboard(auth); } }
         },
         events: async (info, success, failure) => {
             try {
@@ -220,23 +207,26 @@ async function initDashboardCalendar(brandId) {
                     headers: { 'Authorization': `Bearer ${auth.token}` }
                 });
                 const posts = await res.json();
-                success(posts.map(p => ({
-                    id: p.id,
-                    title: (p.scheduledTime ? p.scheduledTime + " " : "") + `[${p.platform}] ${p.title}`,
-                    start: p.scheduledDate,
-                    backgroundColor: getStatusColor(p.status),
-                    borderColor: getStatusColor(p.status),
-                    extendedProps: p
-                })));
+                success(posts.map(p => {
+                    // Aggiunge matita nel titolo del calendario se in revisione
+                    const prefix = p.status === 'REVISION_REQUESTED' ? '✎ ' : '';
+                    return {
+                        id: p.id,
+                        title: prefix + (p.scheduledTime ? p.scheduledTime + " " : "") + p.title,
+                        start: p.scheduledDate,
+                        backgroundColor: getStatusColor(p.status),
+                        borderColor: getStatusColor(p.status),
+                        extendedProps: p
+                    };
+                }));
             } catch (e) { failure(e); }
         },
-        dateClick: (info) => openPostModal({ scheduledDate: info.dateStr }),
         eventClick: (info) => openPostModal(info.event.extendedProps)
     });
     calendar.render();
 }
 
-// --- 6. MODALE (CENTRATO E READ-ONLY MOBILE) ---
+// --- 6. MODALE & UTILS ---
 window.openPostModal = async function(data = {}) {
     const modal = document.getElementById('postModal');
     const modalContent = modal.querySelector('.bg-white'); 
@@ -247,13 +237,13 @@ window.openPostModal = async function(data = {}) {
     const saveBtn = form.querySelector('button[type="submit"]');
     const deleteBtn = document.getElementById('deletePostBtn');
     const footer = document.getElementById('modalFooter');
+    const sendBtn = document.getElementById('sendToClientBtn'); // Prendi il riferimento
     
     const isMobile = window.innerWidth < 768;
     const isExistingPost = !!data.id;
     const isReadOnly = isMobile && isExistingPost;
 
     form.reset();
-
     if (isReadOnly) {
         fieldsContainer.classList.add('hidden');
         saveBtn.style.display = 'none';
@@ -269,15 +259,23 @@ window.openPostModal = async function(data = {}) {
     modalContent.classList.remove('border-t-8', 'border-emerald-500', 'border-amber-500', 'border-red-500');
     
     if (isExistingPost) {
-        if (data.status === 'APPROVED') {
-            statusHeader.innerHTML = "✅ Approvato dal Cliente";
-            modalContent.classList.add('border-t-8', 'border-emerald-500');
-        } else if (data.status === 'REVISION_REQUESTED') {
-            statusHeader.innerHTML = "❌ Modifica Richiesta";
+        // Mostra il tasto "Invia" solo se lo stato è PENDING
+        if (data.status === 'PENDING') {
+            statusHeader.innerHTML = "🔴 Da Programmare (Privato)";
             modalContent.classList.add('border-t-8', 'border-red-500');
-        } else {
-            statusHeader.innerHTML = "🕒 In attesa di revisione";
+            sendBtn.classList.remove('hidden');
+        } else if (data.status === 'APPROVED') {
+            statusHeader.innerHTML = "✅ Approvato / Programmato";
+            modalContent.classList.add('border-t-8', 'border-emerald-500');
+            sendBtn.classList.add('hidden');
+        } else if (data.status === 'REVISION_REQUESTED') {
+            statusHeader.innerHTML = "✎ Modifica Richiesta";
             modalContent.classList.add('border-t-8', 'border-amber-500');
+            sendBtn.classList.add('hidden');
+        } else {
+            statusHeader.innerHTML = "🔴 Da Programmare";
+            modalContent.classList.add('border-t-8', 'border-red-500');
+            sendBtn.classList.add('hidden');
         }
 
         document.getElementById('postId').value = data.id || "";
@@ -296,6 +294,7 @@ window.openPostModal = async function(data = {}) {
         document.getElementById('postId').value = "";
         document.getElementById('scheduledDate').value = data.scheduledDate || "";
         commentsSection.classList.add('hidden');
+        sendBtn.classList.add('hidden'); // Nascondi su post nuovi non ancora salvati
     }
 
     modal.classList.remove('hidden');
@@ -307,7 +306,6 @@ window.closePostModal = () => {
     document.body.classList.remove('menu-open');
 };
 
-// --- 7. DATABASE & UTILS ---
 document.getElementById('postForm').onsubmit = async (e) => {
     e.preventDefault();
     const auth = await getAuthData();
@@ -331,8 +329,7 @@ document.getElementById('postForm').onsubmit = async (e) => {
     });
     if (res.ok) { 
         closePostModal(); 
-        const isCalendarVisible = !document.getElementById('calendar').classList.contains('hidden');
-        if (calendar && isCalendarVisible) {
+        if (calendar && !document.getElementById('calendar').classList.contains('hidden')) {
             calendar.refetchEvents();
         } else {
             const currentBrand = localStorage.getItem('activeBrandId');
@@ -366,19 +363,22 @@ async function getAuthData() {
     return { token: session.access_token, userId: session.user.id };
 }
 
+// LOGICA COLORI AGGIORNATA
 function getStatusColor(status) {
     switch (status) {
-        case 'APPROVED': return '#10b981';
-        case 'REVISION_REQUESTED': return '#ef4444';
-        default: return '#f59e0b';
+        case 'APPROVED': return '#10b981';           // VERDE (Programmato)
+        case 'REVISION_REQUESTED': return '#f59e0b'; // GIALLO (Modifica)
+        case 'PENDING': return '#ef4444';            // ROSSO (Da programmare)
+        default: return '#ef4444';
     }
 }
 
 function getStatusLabel(status) {
     switch (status) {
-        case 'APPROVED': return 'APPROVATO';
-        case 'REVISION_REQUESTED': return 'REVISIONE';
-        default: return 'PENDENTE';
+        case 'APPROVED': return 'PROGRAMMATO';
+        case 'REVISION_REQUESTED': return 'DA REVISIONARE';
+        case 'PENDING': return 'DA PROGRAMMARE';
+        default: return 'DA PROGRAMMARE';
     }
 }
 
@@ -386,4 +386,35 @@ window.copyInviteLink = function() {
     const brandId = localStorage.getItem('activeBrandId');
     if (!brandId) return alert("Seleziona un brand!");
     navigator.clipboard.writeText(`${window.location.origin}/index.html?brandId=${brandId}`).then(() => alert("Copiato!"));
+};
+
+window.sendPostToClient = async function() {
+    const id = document.getElementById('postId').value;
+    if (!id) return;
+
+    const auth = await getAuthData();
+    try {
+        // Cambiamo lo stato in REVISION_REQUESTED (Giallo)
+        const res = await fetch(`${API_BASE}/posts/${id}/status`, {
+            method: 'PATCH',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'Authorization': `Bearer ${auth.token}` 
+            },
+            body: JSON.stringify({ status: 'REVISION_REQUESTED' })
+        });
+
+        if (res.ok) {
+            closePostModal();
+            // Refresh immediato
+            if (calendar && !document.getElementById('calendar').classList.contains('hidden')) {
+                calendar.refetchEvents();
+            } else {
+                const currentBrand = localStorage.getItem('activeBrandId');
+                if(currentBrand) selectBrand(currentBrand); else showGlobalDashboard(auth);
+            }
+        }
+    } catch (err) {
+        console.error("Errore invio al cliente:", err);
+    }
 };

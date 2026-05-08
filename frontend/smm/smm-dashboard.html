@@ -171,7 +171,13 @@
                     <button type="button" id="deletePostBtn" class="text-red-500 font-bold hover:underline hidden text-sm">Elimina Post</button>
                     <div class="flex gap-3 w-full sm:w-auto ml-auto">
                         <button type="button" onclick="closePostModal()" class="flex-1 sm:flex-none px-4 py-3 text-slate-500 font-bold">Annulla</button>
-                        <button type="submit" id="savePostBtn" class="flex-1 sm:flex-none px-8 py-3 bg-indigo-600 text-white font-bold rounded-xl hover:bg-indigo-700 shadow-md">Salva</button>
+                        
+                        <button type="button" id="sendToClientBtn" onclick="sendPostToClient()" 
+                                class="hidden flex-1 sm:flex-none px-6 py-3 bg-indigo-500 text-white font-bold rounded-xl hover:bg-indigo-600 shadow-md transition-all">
+                            Invia al Cliente 🚀
+                        </button>
+
+                        <button type="submit" id="savePostBtn" class="flex-1 sm:flex-none px-8 py-3 bg-emerald-600 text-white font-bold rounded-xl hover:bg-emerald-700 shadow-md">Salva</button>
                     </div>
                 </div>
             </form>
