@@ -9,38 +9,136 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as SmmRouteImport } from './routes/smm'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SmmIndexRouteImport } from './routes/smm.index'
+import { Route as SmmBrandsRouteImport } from './routes/smm.brands'
+import { Route as SmmBrandBrandIdRouteImport } from './routes/smm.brand.$brandId'
 
+const SmmRoute = SmmRouteImport.update({
+  id: '/smm',
+  path: '/smm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SmmIndexRoute = SmmIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SmmRoute,
+} as any)
+const SmmBrandsRoute = SmmBrandsRouteImport.update({
+  id: '/brands',
+  path: '/brands',
+  getParentRoute: () => SmmRoute,
+} as any)
+const SmmBrandBrandIdRoute = SmmBrandBrandIdRouteImport.update({
+  id: '/brand/$brandId',
+  path: '/brand/$brandId',
+  getParentRoute: () => SmmRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/smm': typeof SmmRouteWithChildren
+  '/smm/brands': typeof SmmBrandsRoute
+  '/smm/': typeof SmmIndexRoute
+  '/smm/brand/$brandId': typeof SmmBrandBrandIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/smm/brands': typeof SmmBrandsRoute
+  '/smm': typeof SmmIndexRoute
+  '/smm/brand/$brandId': typeof SmmBrandBrandIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login': typeof LoginRoute
+  '/register': typeof RegisterRoute
+  '/smm': typeof SmmRouteWithChildren
+  '/smm/brands': typeof SmmBrandsRoute
+  '/smm/': typeof SmmIndexRoute
+  '/smm/brand/$brandId': typeof SmmBrandBrandIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/smm'
+    | '/smm/brands'
+    | '/smm/'
+    | '/smm/brand/$brandId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/login'
+    | '/register'
+    | '/smm/brands'
+    | '/smm'
+    | '/smm/brand/$brandId'
+  id:
+    | '__root__'
+    | '/'
+    | '/login'
+    | '/register'
+    | '/smm'
+    | '/smm/brands'
+    | '/smm/'
+    | '/smm/brand/$brandId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginRoute: typeof LoginRoute
+  RegisterRoute: typeof RegisterRoute
+  SmmRoute: typeof SmmRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/smm': {
+      id: '/smm'
+      path: '/smm'
+      fullPath: '/smm'
+      preLoaderRoute: typeof SmmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,21 +146,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/smm/': {
+      id: '/smm/'
+      path: '/'
+      fullPath: '/smm/'
+      preLoaderRoute: typeof SmmIndexRouteImport
+      parentRoute: typeof SmmRoute
+    }
+    '/smm/brands': {
+      id: '/smm/brands'
+      path: '/brands'
+      fullPath: '/smm/brands'
+      preLoaderRoute: typeof SmmBrandsRouteImport
+      parentRoute: typeof SmmRoute
+    }
+    '/smm/brand/$brandId': {
+      id: '/smm/brand/$brandId'
+      path: '/brand/$brandId'
+      fullPath: '/smm/brand/$brandId'
+      preLoaderRoute: typeof SmmBrandBrandIdRouteImport
+      parentRoute: typeof SmmRoute
+    }
   }
 }
 
+interface SmmRouteChildren {
+  SmmBrandsRoute: typeof SmmBrandsRoute
+  SmmIndexRoute: typeof SmmIndexRoute
+  SmmBrandBrandIdRoute: typeof SmmBrandBrandIdRoute
+}
+
+const SmmRouteChildren: SmmRouteChildren = {
+  SmmBrandsRoute: SmmBrandsRoute,
+  SmmIndexRoute: SmmIndexRoute,
+  SmmBrandBrandIdRoute: SmmBrandBrandIdRoute,
+}
+
+const SmmRouteWithChildren = SmmRoute._addFileChildren(SmmRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginRoute: LoginRoute,
+  RegisterRoute: RegisterRoute,
+  SmmRoute: SmmRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}
