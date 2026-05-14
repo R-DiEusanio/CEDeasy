@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.smm.social_planner.model.Brand;
+import com.smm.social_planner.dto.BrandDTO;
 import com.smm.social_planner.service.BrandService;
 
 @RestController
@@ -27,18 +27,18 @@ public class BrandController {
     }
 
     @GetMapping("/smm/{smmId}")
-    public List<Brand> getBrands(@PathVariable UUID smmId) {
+    public List<BrandDTO> getBrands(@PathVariable UUID smmId) {
         return brandService.getAllBrandsBySmm(smmId);
     }
 
     @PostMapping
-    public Brand createBrand(@RequestBody Brand brand) {
-        return brandService.createBrand(brand);
+    public BrandDTO createBrand(@RequestBody BrandDTO brandDTO) {
+        return brandService.createBrand(brandDTO);
     }
 
     @PutMapping("/{id}")
-    public Brand updateBrand(@PathVariable UUID id, @RequestBody Brand brand) {
-        return brandService.updateBrand(id, brand);
+    public BrandDTO updateBrand(@PathVariable UUID id, @RequestBody BrandDTO brandDTO) {
+        return brandService.updateBrand(id, brandDTO);
     }
 
     @DeleteMapping("/{id}")

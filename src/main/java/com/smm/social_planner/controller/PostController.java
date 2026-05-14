@@ -9,6 +9,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
+import com.smm.social_planner.dto.CommentDTO;
 import com.smm.social_planner.dto.PostDTO;
 import com.smm.social_planner.model.Comment;
 import com.smm.social_planner.model.Post;
@@ -31,27 +32,25 @@ public class PostController {
     // 1. LISTA: Trasformata in DTO per il frontend
     @GetMapping("/brand/{brandId}")
     public List<PostDTO> getCalendar(@PathVariable UUID brandId) {
-        List<Post> posts = postService.getBrandCalendar(brandId);
-        return posts.stream().map(this::convertToDTO).collect(Collectors.toList());
+        return postService.getBrandCalendarDTO(brandId);
     }
 
     // 2. READ: Singolo post trasformato in DTO
     @GetMapping("/{id}")
     public PostDTO getPost(@PathVariable UUID id) {
-        Post post = postService.getPostById(id);
-        return convertToDTO(post);
+        return postService.getPostDTOById(id);
     }
 
     // 3. CREATE
     @PostMapping
-    public Post createPost(@RequestBody Post post) {
-        return postService.createPost(post);
+    public PostDTO createPost(@RequestBody PostDTO postDTO) {
+        return postService.createPost(postDTO);
     }
 
     // 4. UPDATE
     @PutMapping("/{id}")
-    public Post updatePost(@PathVariable UUID id, @RequestBody Post post) {
-        return postService.updatePost(id, post);
+    public PostDTO updatePost(@PathVariable UUID id, @RequestBody PostDTO postDTO) {
+        return postService.updatePost(id, postDTO);
     }
 
     // 5. DELETE
@@ -62,7 +61,7 @@ public class PostController {
 
     // 6. UPDATE STATUS
     @PatchMapping("/{id}/status")
-    public Post updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+    public PostDTO updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
         String newStatus = payload.get("status");
         return postService.updateStatus(id, newStatus);
     }
@@ -75,47 +74,51 @@ public class PostController {
 
     // 8. AGGIUNGI COMMENTO
     @PostMapping("/{id}/comments")
-    public Comment addComment(
+    public CommentDTO addComment(
             @PathVariable UUID id, 
-            @RequestBody Comment comment,
+            @RequestBody CommentDTO commentDTO,
             @AuthenticationPrincipal Jwt jwt) {
         
         UUID authorId = UUID.fromString(jwt.getSubject());
+        Comment comment = convertToCommentEntity(commentDTO);
         comment.setPostId(id);
         comment.setAuthorId(authorId);
         
-        return commentService.saveComment(comment);
+        Comment savedComment = commentService.saveComment(comment);
+        return convertToCommentDTO(savedComment);
     }
 
     // 9. LISTA COMMENTI
     @GetMapping("/{id}/comments")
-    public List<Comment> getComments(@PathVariable UUID id) {
-        return commentService.getCommentsByPost(id);
+    public List<CommentDTO> getComments(@PathVariable UUID id) {
+        return commentService.getCommentsByPost(id).stream()
+                .map(this::convertToCommentDTO)
+                .collect(Collectors.toList());
     }
 
-    // METODO HELPER: La "macchina del caffè" che trasforma i dati
-    private PostDTO convertToDTO(Post post) {
-        PostDTO dto = new PostDTO();
-        dto.setId(post.getId().toString());
-        dto.setBrandId(post.getBrand().getId().toString());
-        dto.setTitle(post.getTitle());
-        dto.setCaption(post.getContent());
-        dto.setType(post.getPlatform()); 
-        
-        // Formato data per FullCalendar: YYYY-MM-DDThh:mm:ss
-        String time = (post.getScheduledTime() != null) ? post.getScheduledTime() : "09:00:00";
-        dto.setDate(post.getScheduledDate().toString() + "T" + time);
-
-        // Traduzione stati: PENDING -> pending, APPROVED -> approved, ecc.
-        String currentStatus = post.getStatus().toLowerCase();
-        if (currentStatus.equals("revision_requested")) {
-            dto.setStatus("pending");
-            dto.setHasChangesRequested(true);
-        } else {
-            dto.setStatus(currentStatus);
-            dto.setHasChangesRequested(false);
-        }
-        
+    // METODI HELPER: Conversione DTO <-> Entity
+    private CommentDTO convertToCommentDTO(Comment comment) {
+        CommentDTO dto = new CommentDTO();
+        dto.setId(comment.getId().toString());
+        dto.setPostId(comment.getPostId().toString());
+        dto.setAuthorId(comment.getAuthorId() != null ? comment.getAuthorId().toString() : null);
+        dto.setBody(comment.getBody());
+        dto.setCreatedAt(comment.getCreatedAt() != null ? comment.getCreatedAt().toString() : null);
         return dto;
+    }
+
+    private Comment convertToCommentEntity(CommentDTO dto) {
+        Comment comment = new Comment();
+        if (dto.getId() != null) {
+            comment.setId(UUID.fromString(dto.getId()));
+        }
+        if (dto.getPostId() != null) {
+            comment.setPostId(UUID.fromString(dto.getPostId()));
+        }
+        if (dto.getAuthorId() != null) {
+            comment.setAuthorId(UUID.fromString(dto.getAuthorId()));
+        }
+        comment.setBody(dto.getBody());
+        return comment;
     }
 }

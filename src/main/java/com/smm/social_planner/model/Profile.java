@@ -1,8 +1,16 @@
 package com.smm.social_planner.model;
 
-import jakarta.persistence.*;
-import lombok.Data;
 import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.Table;
+import lombok.Data;
 
 @Entity
 @Table(name = "profiles")
