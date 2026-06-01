@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
@@ -53,15 +54,17 @@ public class PostController {
 
     // 5. DELETE
     @DeleteMapping("/{id}")
-    public void deletePost(@PathVariable UUID id) {
+    public ResponseEntity<Void> deletePost(@PathVariable UUID id) {
         postService.deletePost(id);
+        return ResponseEntity.noContent().build();
     }
 
-    // 6. UPDATE STATUS
+    // 6. UPDATE STATUS (accetta anche feedback opzionale per revision_requested)
     @PatchMapping("/{id}/status")
     public PostDTO updateStatus(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
         String newStatus = payload.get("status");
-        return postService.updateStatus(id, newStatus);
+        String feedback = payload.get("feedback");
+        return postService.updateStatus(id, newStatus, feedback);
     }
 
     // 7. GLOBAL FEED

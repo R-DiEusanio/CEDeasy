@@ -68,6 +68,13 @@ export function usePosts(brandId: string | null | undefined) {
   });
 }
 
+export function useClientPosts() {
+  return useQuery<Post[]>({
+    queryKey: ["client", "posts"],
+    queryFn: () => api.get<Post[]>("/api/client/posts"),
+  });
+}
+
 export function useRecentPosts(smmId: string | null | undefined) {
   return useQuery<Post[]>({
     queryKey: ["posts", "recent", smmId],
@@ -115,11 +122,12 @@ export function useDeletePost() {
 export function useUpdatePostStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status }: { id: string; status: string }) =>
-      api.patch<Post>(`/api/posts/${id}/status`, { status }),
+    mutationFn: ({ id, status, feedback }: { id: string; status: string; feedback?: string }) =>
+      api.patch<Post>(`/api/posts/${id}/status`, { status, ...(feedback ? { feedback } : {}) }),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["posts", data.brandId] });
       qc.invalidateQueries({ queryKey: ["posts", "recent"] });
+      qc.invalidateQueries({ queryKey: ["client", "posts"] });
     },
   });
 }

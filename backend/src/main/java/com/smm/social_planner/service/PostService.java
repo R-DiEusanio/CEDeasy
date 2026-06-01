@@ -12,6 +12,7 @@ import com.smm.social_planner.dto.PostDTO;
 import com.smm.social_planner.model.Brand;
 import com.smm.social_planner.model.Post;
 import com.smm.social_planner.repository.BrandRepository;
+import com.smm.social_planner.repository.CommentRepository;
 import com.smm.social_planner.repository.PostRepository;
 
 @Service
@@ -19,10 +20,12 @@ public class PostService {
 
     private final PostRepository postRepository;
     private final BrandRepository brandRepository;
+    private final CommentRepository commentRepository;
 
-    public PostService(PostRepository postRepository, BrandRepository brandRepository) {
+    public PostService(PostRepository postRepository, BrandRepository brandRepository, CommentRepository commentRepository) {
         this.postRepository = postRepository;
         this.brandRepository = brandRepository;
+        this.commentRepository = commentRepository;
     }
 
     public PostDTO getPostDTOById(UUID id) {
@@ -38,6 +41,13 @@ public class PostService {
 
     public List<PostDTO> getBrandCalendarDTO(UUID brandId) {
         return postRepository.findByBrandIdOrderByScheduledDateAsc(brandId).stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<PostDTO> getClientVisiblePosts(UUID brandId) {
+        return postRepository.findByBrand_IdAndStatusNotIgnoreCaseOrderByScheduledDateAsc(brandId, "DRAFT")
+                .stream()
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
@@ -75,12 +85,16 @@ public class PostService {
     }
 
     public void deletePost(UUID id) {
+        commentRepository.deleteByPostId(id);
         postRepository.deleteById(id);
     }
 
-    public PostDTO updateStatus(UUID id, String newStatus) {
+    public PostDTO updateStatus(UUID id, String newStatus, String feedback) {
         Post post = getPostById(id);
         post.setStatus(newStatus.toUpperCase());
+        if (feedback != null && !feedback.isBlank()) {
+            post.setFeedback(feedback);
+        }
         post.setUpdatedAt(OffsetDateTime.now());
         Post updatedPost = postRepository.save(post);
         return convertToDTO(updatedPost);

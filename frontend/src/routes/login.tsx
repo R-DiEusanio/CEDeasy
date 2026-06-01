@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { useAppStore } from "@/lib/app-store";
 import { supabase } from "@/lib/supabase";
 import { api } from "@/lib/api";
+import type { ProfileDTO } from "@/lib/mock-data";
 
 const schema = z.object({
   email: z.string().trim().email({ message: "Inserisci un'email valida" }).max(255),
@@ -65,15 +66,23 @@ function LoginPage() {
       }
 
       if (data.session) {
-        // Upsert del profilo sul backend Java (crea se non esiste)
-        await api.post("/api/profiles", {
-          fullName: data.session.user.user_metadata?.full_name ?? email,
-          role: "SMM",
-        }).catch(() => { /* non bloccante */ });
+        // Legge il profilo per sapere il ruolo e fare redirect corretto
+        let destination: "/smm" | "/client" = "/smm";
+        try {
+          const profile = await api.get<ProfileDTO>("/api/profiles/me");
+          destination = profile.role === "CLIENT" ? "/client" : "/smm";
+          setRole(profile.role === "CLIENT" ? "client" : "smm");
+        } catch {
+          // Profilo non ancora creato → crea come SMM di default
+          await api.post("/api/profiles", {
+            fullName: data.session.user.user_metadata?.full_name ?? email,
+            role: "SMM",
+          }).catch(() => {});
+          setRole("smm");
+        }
 
-        setRole("smm");
         toast.success("Bentornato su CedEasy");
-        navigate({ to: "/smm" });
+        navigate({ to: destination });
       }
 
     } catch (error) {

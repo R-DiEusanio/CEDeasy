@@ -12,8 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SmmRouteImport } from './routes/smm'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as ClientRouteImport } from './routes/client'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SmmIndexRouteImport } from './routes/smm.index'
+import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as SmmBrandsRouteImport } from './routes/smm.brands'
 import { Route as SmmBrandBrandIdRouteImport } from './routes/smm.brand.$brandId'
 
@@ -32,6 +34,11 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ClientRoute = ClientRouteImport.update({
+  id: '/client',
+  path: '/client',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -41,6 +48,11 @@ const SmmIndexRoute = SmmIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => SmmRoute,
+} as any)
+const ClientIndexRoute = ClientIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ClientRoute,
 } as any)
 const SmmBrandsRoute = SmmBrandsRouteImport.update({
   id: '/brands',
@@ -55,10 +67,12 @@ const SmmBrandBrandIdRoute = SmmBrandBrandIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/client': typeof ClientRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/smm': typeof SmmRouteWithChildren
   '/smm/brands': typeof SmmBrandsRoute
+  '/client/': typeof ClientIndexRoute
   '/smm/': typeof SmmIndexRoute
   '/smm/brand/$brandId': typeof SmmBrandBrandIdRoute
 }
@@ -67,16 +81,19 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/smm/brands': typeof SmmBrandsRoute
+  '/client': typeof ClientIndexRoute
   '/smm': typeof SmmIndexRoute
   '/smm/brand/$brandId': typeof SmmBrandBrandIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/client': typeof ClientRouteWithChildren
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/smm': typeof SmmRouteWithChildren
   '/smm/brands': typeof SmmBrandsRoute
+  '/client/': typeof ClientIndexRoute
   '/smm/': typeof SmmIndexRoute
   '/smm/brand/$brandId': typeof SmmBrandBrandIdRoute
 }
@@ -84,10 +101,12 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/client'
     | '/login'
     | '/register'
     | '/smm'
     | '/smm/brands'
+    | '/client/'
     | '/smm/'
     | '/smm/brand/$brandId'
   fileRoutesByTo: FileRoutesByTo
@@ -96,21 +115,25 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/smm/brands'
+    | '/client'
     | '/smm'
     | '/smm/brand/$brandId'
   id:
     | '__root__'
     | '/'
+    | '/client'
     | '/login'
     | '/register'
     | '/smm'
     | '/smm/brands'
+    | '/client/'
     | '/smm/'
     | '/smm/brand/$brandId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ClientRoute: typeof ClientRouteWithChildren
   LoginRoute: typeof LoginRoute
   RegisterRoute: typeof RegisterRoute
   SmmRoute: typeof SmmRouteWithChildren
@@ -139,6 +162,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/client': {
+      id: '/client'
+      path: '/client'
+      fullPath: '/client'
+      preLoaderRoute: typeof ClientRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -152,6 +182,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/smm/'
       preLoaderRoute: typeof SmmIndexRouteImport
       parentRoute: typeof SmmRoute
+    }
+    '/client/': {
+      id: '/client/'
+      path: '/'
+      fullPath: '/client/'
+      preLoaderRoute: typeof ClientIndexRouteImport
+      parentRoute: typeof ClientRoute
     }
     '/smm/brands': {
       id: '/smm/brands'
@@ -170,6 +207,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ClientRouteChildren {
+  ClientIndexRoute: typeof ClientIndexRoute
+}
+
+const ClientRouteChildren: ClientRouteChildren = {
+  ClientIndexRoute: ClientIndexRoute,
+}
+
+const ClientRouteWithChildren =
+  ClientRoute._addFileChildren(ClientRouteChildren)
+
 interface SmmRouteChildren {
   SmmBrandsRoute: typeof SmmBrandsRoute
   SmmIndexRoute: typeof SmmIndexRoute
@@ -186,6 +234,7 @@ const SmmRouteWithChildren = SmmRoute._addFileChildren(SmmRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ClientRoute: ClientRouteWithChildren,
   LoginRoute: LoginRoute,
   RegisterRoute: RegisterRoute,
   SmmRoute: SmmRouteWithChildren,

@@ -15,7 +15,7 @@ export function BrandMonthCalendar({
 }: {
   posts: Post[];
   onSelectPost: (id: string) => void;
-  onCreateForDate: (iso: string) => void;
+  onCreateForDate?: (iso: string) => void;
 }) {
   const today = new Date();
   const [cursor, setCursor] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -97,20 +97,22 @@ export function BrandMonthCalendar({
                     >
                       {day}
                     </span>
-                    <button
-                      onClick={() => onCreateForDate(iso)}
-                      aria-label="Crea bozza in questa data"
-                      className="grid h-5 w-5 place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-primary group-hover:opacity-100"
-                    >
-                      <Plus className="h-3 w-3" />
-                    </button>
+                    {onCreateForDate && (
+                      <button
+                        onClick={() => onCreateForDate(iso)}
+                        aria-label="Crea bozza in questa data"
+                        className="grid h-5 w-5 place-items-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-background hover:text-primary group-hover:opacity-100"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    )}
                   </div>
                   <div className="space-y-1">
                     {dayPosts.slice(0, 3).map((p) => (
                       <button
                         key={p.id}
                         onClick={() => onSelectPost(p.id)}
-                        className="flex w-full items-center gap-1 truncate rounded-md bg-card px-1.5 py-1 text-left text-[10px] font-medium shadow-sm transition-colors hover:bg-accent sm:gap-1.5"
+                        className="flex w-full items-center gap-1 truncate rounded-md bg-card px-1.5 py-1 text-left text-[11px] font-medium shadow-sm transition-colors hover:bg-accent sm:gap-1.5 sm:text-xs"
                       >
                         <StatusDot status={p.status} />
                         <span className="hidden sm:inline">{typeEmoji[p.type]}</span>

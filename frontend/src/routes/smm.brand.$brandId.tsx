@@ -136,7 +136,7 @@ function BrandPage() {
         </div>
       )}
 
-      <PostDetailDialog postId={selected} onClose={() => setSelected(null)} />
+      <PostDetailDialog postId={selected} onClose={() => setSelected(null)} brandId={brandId} />
       <CreatePostDialog
         open={createOpen}
         onOpenChange={setCreateOpen}
