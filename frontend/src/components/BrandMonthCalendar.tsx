@@ -1,12 +1,23 @@
-import type { Post } from "@/lib/mock-data";
-import { typeEmoji } from "@/lib/mock-data";
-import { StatusDot } from "./StatusBadge";
+import type { Post, PostType, PostStatus } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Image, Film, Layers, Sparkles } from "lucide-react";
 import { useState } from "react";
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
+
+const STATUS_BADGE: Record<PostStatus, string> = {
+  draft:    "bg-[oklch(0.96_0.04_25)]  text-[oklch(0.42_0.16_25)]",
+  pending:  "bg-[oklch(0.97_0.05_80)]  text-[oklch(0.45_0.13_72)]",
+  approved: "bg-[oklch(0.96_0.06_150)] text-[oklch(0.36_0.14_150)]",
+};
+
+function PostTypeIcon({ type }: { type: PostType }) {
+  if (type === "Reel")      return <Film     className="h-3 w-3 shrink-0" />;
+  if (type === "Carosello") return <Layers   className="h-3 w-3 shrink-0" />;
+  if (type === "Story")     return <Sparkles className="h-3 w-3 shrink-0" />;
+  return                           <Image    className="h-3 w-3 shrink-0" />;
+}
 
 export function BrandMonthCalendar({
   posts,
@@ -66,6 +77,8 @@ export function BrandMonthCalendar({
         <h3 className="text-base font-semibold capitalize sm:text-lg">{monthLabel}</h3>
       </div>
 
+      {/* Wrapper a contrasto che isola visivamente la griglia */}
+      <div className="rounded-xl bg-muted/50 p-2 ring-1 ring-border/40 sm:p-3">
       <div className="mb-2 grid grid-cols-7 gap-1 text-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground sm:gap-2 sm:text-xs">
         {WEEKDAYS.map((d) => (
           <div key={d}>{d}</div>
@@ -81,8 +94,8 @@ export function BrandMonthCalendar({
             <div
               key={i}
               className={cn(
-                "group relative flex min-h-[72px] flex-col rounded-xl border border-transparent p-1.5 text-left sm:min-h-[110px] sm:p-2",
-                day && "bg-muted/40 hover:bg-muted",
+                "group relative flex min-h-[64px] flex-col overflow-hidden rounded-xl border border-transparent p-1.5 text-left sm:aspect-square sm:min-h-0 sm:p-2",
+                day && "bg-card hover:bg-muted/60",
                 isToday && "border-primary bg-primary-soft",
               )}
             >
@@ -112,10 +125,12 @@ export function BrandMonthCalendar({
                       <button
                         key={p.id}
                         onClick={() => onSelectPost(p.id)}
-                        className="flex w-full items-center gap-1 truncate rounded-md bg-card px-1.5 py-1 text-left text-[11px] font-medium shadow-sm transition-colors hover:bg-accent sm:gap-1.5 sm:text-xs"
+                        className={cn(
+                          "flex w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-left text-[10px] font-semibold transition-all hover:opacity-80 active:scale-95",
+                          STATUS_BADGE[p.status],
+                        )}
                       >
-                        <StatusDot status={p.status} />
-                        <span className="hidden sm:inline">{typeEmoji[p.type]}</span>
+                        <PostTypeIcon type={p.type} />
                         <span className="truncate">{p.title}</span>
                       </button>
                     ))}
@@ -131,6 +146,7 @@ export function BrandMonthCalendar({
           );
         })}
       </div>
+      </div>{/* /wrapper contrasto */}
     </div>
   );
 }

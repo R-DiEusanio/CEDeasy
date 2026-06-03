@@ -66,7 +66,7 @@ export function PostClientCard({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)] transition-all",
+        "overflow-hidden rounded-2xl border bg-card shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[var(--shadow-elevated)]",
         isApproved && "border-[oklch(0.85_0.12_150)]",
         hasChanges && !isApproved && "border-[oklch(0.85_0.12_70)]",
         !isApproved && !hasChanges && "border-border",
@@ -79,16 +79,16 @@ export function PostClientCard({
           background: `linear-gradient(135deg, oklch(0.85 0.12 ${hue}), oklch(0.7 0.15 ${hue + 30}))`,
         }}
       >
-        <span className="absolute left-3 top-3 rounded-full bg-card/90 px-2.5 py-1 text-xs font-medium text-foreground backdrop-blur">
+        <span className="absolute left-3 top-3 rounded-full bg-card/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-foreground backdrop-blur">
           {typeEmoji[post.type]} {post.type}
         </span>
         {hasChanges && !isApproved && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[oklch(0.97_0.05_70)] px-2.5 py-1 text-xs font-medium text-[oklch(0.5_0.13_70)]">
-            <Pencil className="h-3 w-3" /> Modifiche richieste
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[oklch(0.97_0.05_70)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[oklch(0.5_0.13_70)]">
+            <Pencil className="h-3 w-3" /> Modifiche
           </span>
         )}
         {isApproved && (
-          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[oklch(0.97_0.08_150)] px-2.5 py-1 text-xs font-medium text-[oklch(0.4_0.14_150)]">
+          <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[oklch(0.97_0.08_150)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[oklch(0.4_0.14_150)]">
             <Check className="h-3 w-3" /> Approvato
           </span>
         )}

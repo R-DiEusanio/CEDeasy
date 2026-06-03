@@ -1,11 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useClientPosts } from "@/lib/queries";
 import { getPostHue, typeEmoji } from "@/lib/mock-data";
 import { PostClientCard } from "@/components/PostClientCard";
 import { BrandMonthCalendar } from "@/components/BrandMonthCalendar";
+import { RecentActivityFeed } from "@/components/RecentActivityFeed";
+import { CalendarSidebar } from "@/components/CalendarSidebar";
+import { PostSkeletonGrid } from "@/components/PostSkeleton";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { CheckCircle2, Clock, CalendarDays, LayoutList, Loader2, Calendar, MessageSquare } from "lucide-react";
+import { CheckCircle2, Clock, CalendarDays, LayoutList, Loader2, Calendar, MessageSquare, ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Post } from "@/lib/mock-data";
 
@@ -17,6 +20,16 @@ function ClientDashboard() {
   const { data: posts = [], isLoading, isError } = useClientPosts();
   const [view, setView] = useState<"list" | "calendar">("list");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const transitionTimer = useRef<ReturnType<typeof setTimeout>>();
+
+  const handleViewChange = (newView: "list" | "calendar") => {
+    if (newView === view) return;
+    clearTimeout(transitionTimer.current);
+    setIsTransitioning(true);
+    setView(newView);
+    transitionTimer.current = setTimeout(() => setIsTransitioning(false), 300);
+  };
 
   const now = new Date();
   const currentMonth = now.getMonth();
@@ -54,8 +67,10 @@ function ClientDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Intestazione + contatori + toggle: rimangono stretti */}
-      <div className="mx-auto max-w-2xl space-y-6">
+      {/* Sezione superiore: colonna sinistra (stats + toggle) + destra (feed) */}
+      <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+        {/* Colonna sinistra */}
+        <div className="min-w-0 flex-1 space-y-6">
         {/* Intestazione */}
         <div>
           <h1 className="text-2xl font-bold lg:text-3xl">Ciao! 👋</h1>
@@ -68,19 +83,48 @@ function ClientDashboard() {
 
         {/* Contatori */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
-            <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[oklch(0.95_0.05_70)] text-[oklch(0.5_0.13_70)]">
+          {/* Card — Da approvare */}
+          <div className="relative overflow-hidden rounded-2xl border border-[oklch(0.91_0.07_80)] bg-[oklch(0.97_0.04_80)] p-5 shadow-[var(--shadow-soft)] transition-all duration-200 hover:shadow-[var(--shadow-elevated)]">
+            <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-[oklch(0.78_0.16_80)] opacity-[0.08]" />
+            <div className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-xl bg-[oklch(0.93_0.09_80)] text-[oklch(0.52_0.14_70)]">
               <Clock className="h-4 w-4" />
             </div>
-            <div className="text-3xl font-bold">{stats.pending.length}</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">Da approvare</div>
+            <div className="pr-12">
+              <div className="text-4xl font-bold tracking-tight text-[oklch(0.28_0.06_80)]">
+                {stats.pending.length}
+              </div>
+              <div className="mt-1 text-sm font-medium text-[oklch(0.48_0.08_75)]">
+                Da approvare
+              </div>
+            </div>
+            <div className="mt-4 border-t border-[oklch(0.91_0.07_80)] pt-3">
+              <span className="flex items-center gap-1 text-xs font-medium text-[oklch(0.55_0.1_70)]">
+                Richiede la tua revisione
+                <ArrowRight className="ml-auto h-3 w-3" />
+              </span>
+            </div>
           </div>
-          <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
-            <div className="mb-2 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[oklch(0.95_0.08_150)] text-[oklch(0.4_0.14_150)]">
+
+          {/* Card — Approvati questo mese */}
+          <div className="relative overflow-hidden rounded-2xl border border-[oklch(0.9_0.07_150)] bg-[oklch(0.97_0.04_150)] p-5 shadow-[var(--shadow-soft)] transition-all duration-200 hover:shadow-[var(--shadow-elevated)]">
+            <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-[oklch(0.68_0.17_150)] opacity-[0.08]" />
+            <div className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-xl bg-[oklch(0.93_0.09_150)] text-[oklch(0.42_0.15_150)]">
               <CheckCircle2 className="h-4 w-4" />
             </div>
-            <div className="text-3xl font-bold">{stats.approvedThisMonth.length}</div>
-            <div className="mt-0.5 text-xs text-muted-foreground">Approvati questo mese</div>
+            <div className="pr-12">
+              <div className="text-4xl font-bold tracking-tight text-[oklch(0.25_0.06_150)]">
+                {stats.approvedThisMonth.length}
+              </div>
+              <div className="mt-1 text-sm font-medium text-[oklch(0.42_0.09_150)]">
+                Approvati questo mese
+              </div>
+            </div>
+            <div className="mt-4 border-t border-[oklch(0.9_0.07_150)] pt-3">
+              <span className="flex items-center gap-1 text-xs font-medium text-[oklch(0.48_0.12_150)]">
+                Visualizza storico
+                <ArrowRight className="ml-auto h-3 w-3" />
+              </span>
+            </div>
           </div>
         </div>
 
@@ -88,7 +132,7 @@ function ClientDashboard() {
         {posts.length > 0 && (
           <div className="inline-flex rounded-xl border border-border bg-card p-1 text-sm">
             <button
-              onClick={() => setView("list")}
+              onClick={() => handleViewChange("list")}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors",
                 view === "list"
@@ -99,7 +143,7 @@ function ClientDashboard() {
               <LayoutList className="h-4 w-4" /> Lista
             </button>
             <button
-              onClick={() => setView("calendar")}
+              onClick={() => handleViewChange("calendar")}
               className={cn(
                 "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors",
                 view === "calendar"
@@ -111,26 +155,45 @@ function ClientDashboard() {
             </button>
           </div>
         )}
-      </div>
+        </div>{/* /colonna sinistra */}
 
-      {/* Vista Calendario: usa tutta la larghezza disponibile */}
-      {view === "calendar" && posts.length > 0 && (
-        <BrandMonthCalendar
-          posts={posts}
-          onSelectPost={(id) => setSelectedPostId(id)}
-        />
+        {/* Colonna destra: activity feed — solo su desktop */}
+        <div className="hidden w-72 shrink-0 lg:block">
+          <RecentActivityFeed />
+        </div>
+      </div>{/* /sezione superiore flex */}
+
+      {/* Skeleton — visibile solo durante la transizione tra viste */}
+      {isTransitioning && <PostSkeletonGrid count={6} />}
+
+      {/* Vista Calendario: 2 colonne su desktop (calendario + sidebar) */}
+      {!isTransitioning && view === "calendar" && posts.length > 0 && (
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
+          <div className="min-w-0 flex-1">
+            <BrandMonthCalendar
+              posts={posts}
+              onSelectPost={(id) => setSelectedPostId(id)}
+            />
+          </div>
+          <div className="hidden w-64 shrink-0 lg:sticky lg:top-8 lg:block">
+            <CalendarSidebar posts={posts} />
+          </div>
+        </div>
       )}
 
-      {/* Vista Lista: rimane stretta */}
-      {view === "list" && (
-        <div className="mx-auto max-w-2xl space-y-6">
+      {/* Vista Lista: griglia responsiva */}
+      {!isTransitioning && view === "list" && (
+        <div className="space-y-8">
           {pendingPosts.length > 0 && (
             <section className="space-y-4">
-              <h2 className="flex items-center gap-2 text-base font-semibold">
+              <div className="flex items-center gap-3">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-[oklch(0.75_0.13_70)]" />
-                Da approvare
-              </h2>
-              <div className="space-y-4">
+                <h2 className="text-base font-semibold">Da approvare</h2>
+                <span className="ml-auto rounded-full bg-[oklch(0.97_0.04_80)] px-2.5 py-0.5 text-xs font-medium text-[oklch(0.52_0.14_70)]">
+                  {pendingPosts.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {pendingPosts.map((p) => (
                   <PostClientCard key={p.id} post={p} />
                 ))}
@@ -140,11 +203,16 @@ function ClientDashboard() {
 
           {approvedPosts.length > 0 && (
             <section className="space-y-4">
-              <h2 className="flex items-center gap-2 text-base font-semibold text-muted-foreground">
+              <div className="flex items-center gap-3">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-[oklch(0.5_0.15_150)]" />
-                Già approvati
-              </h2>
-              <div className="space-y-4">
+                <h2 className="text-base font-semibold text-muted-foreground">
+                  Già approvati
+                </h2>
+                <span className="ml-auto rounded-full bg-[oklch(0.97_0.04_150)] px-2.5 py-0.5 text-xs font-medium text-[oklch(0.42_0.15_150)]">
+                  {approvedPosts.length}
+                </span>
+              </div>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
                 {approvedPosts.map((p) => (
                   <PostClientCard key={p.id} post={p} />
                 ))}

@@ -2,6 +2,7 @@ import { createFileRoute, Outlet, redirect, useNavigate } from "@tanstack/react-
 import { supabase } from "@/lib/supabase";
 import { LogOut, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import { ClientSidebar } from "@/components/ClientSidebar";
 
 export const Route = createFileRoute("/client")({
   beforeLoad: async () => {
@@ -26,15 +27,19 @@ function ClientLayout() {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Header — altezza fissa ~57px, si usa come offset per sticky sidebar */}
       <header className="sticky top-0 z-30 flex items-center justify-between border-b border-border bg-background/80 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-2">
           <div
-            className="grid h-8 w-8 place-items-center rounded-xl text-primary-foreground"
+            className="grid h-8 w-8 place-items-center rounded-xl text-primary-foreground lg:hidden"
             style={{ background: "var(--gradient-brand)" }}
           >
             <Sparkles className="h-4 w-4" />
           </div>
-          <span className="text-sm font-bold">CedEasy</span>
+          <span className="text-sm font-bold lg:hidden">CedEasy</span>
+          <span className="hidden text-sm font-semibold text-muted-foreground lg:block">
+            Area Cliente
+          </span>
         </div>
         <button
           onClick={handleLogout}
@@ -44,9 +49,14 @@ function ClientLayout() {
           Esci
         </button>
       </header>
-      <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-8">
-        <Outlet />
-      </main>
+
+      {/* Body: sidebar (desktop) + contenuto principale */}
+      <div className="flex">
+        <ClientSidebar />
+        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
