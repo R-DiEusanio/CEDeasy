@@ -11,9 +11,8 @@ import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 export default defineConfig({
   cloudflare: false,
   tanstackStart: {
-    server: { 
+    server: {
       entry: "server",
-      preset: "vercel",
     },
   },
   // AGGIUNGIAMO QUESTO BLOCCO PER SPOSTARE LA PORTA
