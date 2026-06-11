@@ -12,11 +12,11 @@ await cp('dist/client', `${OUT}/static`, { recursive: true });
 // SSR server bundle
 await cp('dist/server', `${OUT}/functions/ssr.func`, { recursive: true });
 
-// Adapter: Vercel expects `export default async function(request)`,
-// but our server.js exports `export default { fetch(request, env, ctx) }`.
+// Vercel Node.js runtime recognizes `export function fetch` as a Web API handler.
+// `export default` is treated as the legacy (req, res) signature and the return value is ignored.
 await writeFile(
   `${OUT}/functions/ssr.func/index.js`,
-  `import server from './server.js';\nexport default (request) => server.fetch(request);\n`,
+  `import server from './server.js';\nexport function fetch(request) {\n  return server.fetch(request);\n}\n`,
 );
 
 // Node.js requires package.json with "type":"module" to parse ESM files (.js with import/export)

@@ -17,6 +17,9 @@ export default defineConfig({
   },
   // AGGIUNGIAMO QUESTO BLOCCO PER SPOSTARE LA PORTA
   vite: {
+    ssr: {
+      noExternal: true,
+    },
     server: {
       port: 3000,
       strictPort: true,
