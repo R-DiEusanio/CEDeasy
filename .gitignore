@@ -1,54 +1,32 @@
-# --- JAVA / MAVEN (Backend) ---
-target/
-!.mvn/wrapper/maven-wrapper.jar
-build/
-.apt_generated
-.classpath
-.factorypath
-.project
-.settings
-.springBeans
-.sts4-cache
-bin/
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
 
-# --- NODE / VITE (Frontend) ---
-# Fondamentale: ignora le dipendenze scaricate
-node_modules/
-frontend/node_modules/
+node_modules
+dist
+dist-ssr
+.output
+.vinxi
+.tanstack/**
+.nitro
+*.local
 
-# Ignora le build di produzione
-dist/
-frontend/dist/
+# Wrangler / Cloudflare
+.wrangler/
+.dev.vars
 
-# --- IDE & TOOLS ---
-.idea/
-.vscode/
-*.iws
-*.iml
-*.ipr
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
 .DS_Store
-Thumbs.db
-
-# --- SECURITY ---
-# Non caricare mai le tue chiavi segrete
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.pem
-
-# --- SECURITY ---
-# Non caricare mai le tue chiavi segrete
-.env
-*.env.local
-# ... (altre righe già presenti)
-
-# File di configurazione locale Spring Boot (contiene password in chiaro)
-src/main/resources/application-dev.properties
-
-# Frontend Environment Files
-frontend/.env
-frontend/.env.development
-frontend/.env.production
-frontend/.env.local
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
