@@ -8,8 +8,9 @@ import { PostCard } from "@/components/PostCard";
 import { PostDetailDialog } from "@/components/PostDetailDialog";
 import { CreatePostDialog } from "@/components/CreatePostDialog";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, CalendarDays, LayoutList, Loader2, Plus } from "lucide-react";
+import { ArrowLeft, CalendarDays, Copy, LayoutList, Loader2, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/smm/brand/$brandId")({
   component: BrandPage,
@@ -81,6 +82,17 @@ function BrandPage() {
             {brand.category ? `${brand.category} · ` : ""}{posts.length} contenuti
           </p>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="hidden sm:inline-flex"
+          onClick={() => {
+            navigator.clipboard.writeText(brandId);
+            toast.success("ID brand copiato — incollalo al cliente");
+          }}
+        >
+          <Copy className="h-4 w-4" /> ID cliente
+        </Button>
         <Button onClick={() => openCreate()} className="hidden sm:inline-flex">
           <Plus className="h-4 w-4" /> Nuova bozza
         </Button>

@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { LogOut, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { ClientSidebar } from "@/components/ClientSidebar";
+import { ClientMobileTabBar } from "@/components/MobileTabBar";
 
 export const Route = createFileRoute("/client")({
   beforeLoad: async () => {
@@ -53,10 +54,11 @@ function ClientLayout() {
       {/* Body: sidebar (desktop) + contenuto principale */}
       <div className="flex">
         <ClientSidebar />
-        <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8 lg:py-8">
+        <main className="min-w-0 flex-1 px-4 py-6 pb-24 sm:px-6 sm:py-8 lg:px-8 lg:pb-8 lg:py-8">
           <Outlet />
         </main>
       </div>
+      <ClientMobileTabBar />
     </div>
   );
 }

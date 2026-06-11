@@ -2,15 +2,19 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { useAppStore } from "@/lib/app-store";
 import { useBrands } from "@/lib/queries";
 import { getBrandHue, getBrandInitials } from "@/lib/mock-data";
-import { Bell, Home, Plus, Sparkles } from "lucide-react";
+import { Home, Plus, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { CreateBrandDialog } from "./CreateBrandDialog";
 
 export function BrandSidebar() {
   const { activeBrandId, setActiveBrandId, userId } = useAppStore();
   const { data: brands = [] } = useBrands(userId);
   const path = useRouterState({ select: (s) => s.location.pathname });
+  const [createOpen, setCreateOpen] = useState(false);
 
   return (
+    <>
     <aside className="hidden w-72 shrink-0 flex-col border-r border-border bg-card/60 p-4 lg:flex">
       <Link to="/smm" className="mb-6 flex items-center gap-2 px-2">
         <div
@@ -37,24 +41,16 @@ export function BrandSidebar() {
         >
           <Home className="h-4 w-4" /> Dashboard
         </Link>
-        <Link
-          to="/smm/notifications"
-          className={cn(
-            "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
-            path === "/smm/notifications"
-              ? "bg-primary-soft text-primary"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
-          )}
-        >
-          <Bell className="h-4 w-4" /> Notifiche
-        </Link>
       </nav>
 
       <div className="mb-2 flex items-center justify-between px-3">
         <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           Clienti
         </span>
-        <button className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted">
+        <button
+          onClick={() => setCreateOpen(true)}
+          className="grid h-6 w-6 place-items-center rounded-md text-muted-foreground hover:bg-muted"
+        >
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
@@ -95,5 +91,8 @@ export function BrandSidebar() {
         })}
       </div>
     </aside>
+
+    <CreateBrandDialog open={createOpen} onOpenChange={setCreateOpen} />
+    </>
   );
 }

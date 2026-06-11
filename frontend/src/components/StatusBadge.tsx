@@ -1,4 +1,4 @@
-import { Pencil } from "lucide-react";
+import { AlertTriangle, Pencil } from "lucide-react";
 import type { PostStatus } from "@/lib/mock-data";
 import { statusLabel } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
@@ -27,6 +27,22 @@ export function StatusBadge({
   hasChanges?: boolean;
   className?: string;
 }) {
+  // Stato "CHANGES_REQUESTED": bozza con feedback del cliente in attesa → badge allerta dedicato
+  if (hasChanges && status === "draft") {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+          "bg-[oklch(0.95_0.06_25)] text-[oklch(0.4_0.18_25)]",
+          className,
+        )}
+      >
+        <AlertTriangle className="h-3 w-3" />
+        Modifica richiesta
+      </span>
+    );
+  }
+
   return (
     <span
       className={cn(

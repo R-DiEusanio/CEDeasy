@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { useAppStore, type Role } from "@/lib/app-store";
 import { supabase } from "@/lib/supabase";
-import { api } from "@/lib/api";
+import { upsertProfile } from "@/lib/supabase/profiles";
 
 const schema = z.object({
   name: z.string().trim().min(2, { message: "Inserisci il tuo nome" }).max(80),
@@ -35,9 +35,10 @@ function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setLocalRole] = useState<Role>("smm");
+  const [brandId, setBrandId] = useState("");
   const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string }>({});
+  const [errors, setErrors] = useState<{ name?: string; email?: string; password?: string; brandId?: string }>({});
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -50,6 +51,12 @@ function RegisterPage() {
       return;
     }
     
+    // Validazione extra: il cliente deve fornire il brand ID
+    if (role === "client" && !brandId.trim()) {
+      setErrors({ brandId: "Inserisci l'ID brand fornito dal tuo SMM" });
+      return;
+    }
+
     setErrors({});
     setLoading(true);
 
@@ -62,7 +69,7 @@ function RegisterPage() {
           // Passiamo nome e ruolo come metadati
           data: {
             full_name: name,
-            role: role === "smm" ? "SMM" : "CLIENTE",
+            role: role === "smm" ? "SMM" : "CLIENT",
           },
         },
       });
@@ -76,10 +83,11 @@ function RegisterPage() {
       if (data.user) {
         // Se abbiamo già una sessione (email confirmation disabilitata), creiamo subito il profilo
         if (data.session) {
-          await api.post("/api/profiles", {
-            fullName: name,
-            role: role === "smm" ? "SMM" : "CLIENT",
-          }).catch(() => { /* il profilo verrà creato al prossimo login */ });
+          await upsertProfile(
+            name,
+            role === "smm" ? "SMM" : "CLIENT",
+            role === "client" ? brandId.trim() : undefined,
+          ).catch(() => { /* il profilo verrà creato al prossimo login */ });
         }
         toast.success("Account creato con successo!");
         toast.info("Ora puoi effettuare l'accesso.");
@@ -128,6 +136,26 @@ function RegisterPage() {
             />
           </div>
         </div>
+
+        {role === "client" && (
+          <div className="space-y-1.5">
+            <Label htmlFor="brandId">ID Brand</Label>
+            <Input
+              id="brandId"
+              type="text"
+              placeholder="Incolla qui l'ID fornito dal tuo SMM"
+              value={brandId}
+              onChange={(e) => setBrandId(e.target.value)}
+              className="h-11 font-mono text-sm"
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Chiedi all'SMM di copiarti l'ID dal pannello brand.
+            </p>
+            {errors.brandId && (
+              <p className="text-xs font-medium text-destructive">{errors.brandId}</p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-1.5">
           <Label htmlFor="name">Nome completo</Label>

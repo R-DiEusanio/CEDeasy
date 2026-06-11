@@ -17,6 +17,7 @@ function SmmDashboard() {
   const { data: brands = [], isLoading: brandsLoading } = useBrands(userId);
   const { data: recentPosts = [], isLoading: postsLoading } = useRecentPosts(userId);
   const [selected, setSelected] = useState<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<"draft" | "pending" | "approved" | "changes" | null>(null);
 
   const stats = {
     drafts: recentPosts.filter((p) => p.status === "draft").length,
@@ -25,7 +26,16 @@ function SmmDashboard() {
     changes: recentPosts.filter((p) => p.hasChangesRequested).length,
   };
 
-  const recent = [...recentPosts].slice(0, 6);
+  const displayedPosts =
+    activeFilter === null
+      ? [...recentPosts].slice(0, 6)
+      : recentPosts.filter((p) => {
+          if (activeFilter === "draft") return p.status === "draft";
+          if (activeFilter === "pending") return p.status === "pending";
+          if (activeFilter === "approved") return p.status === "approved";
+          if (activeFilter === "changes") return p.hasChangesRequested;
+          return true;
+        });
 
   if (brandsLoading || postsLoading) {
     return (
@@ -45,10 +55,10 @@ function SmmDashboard() {
       </div>
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard icon={<FileEdit className="h-4 w-4" />} label="Bozze" value={stats.drafts} tone="draft" />
-        <StatCard icon={<Clock className="h-4 w-4" />} label="In attesa" value={stats.pending} tone="pending" />
-        <StatCard icon={<CheckCircle2 className="h-4 w-4" />} label="Approvati" value={stats.approved} tone="approved" />
-        <StatCard icon={<FileEdit className="h-4 w-4" />} label="Modifiche richieste" value={stats.changes} tone="draft" />
+        <StatCard icon={<FileEdit className="h-4 w-4" />} label="Bozze" value={stats.drafts} tone="draft" isActive={activeFilter === "draft"} onClick={() => setActiveFilter(activeFilter === "draft" ? null : "draft")} />
+        <StatCard icon={<Clock className="h-4 w-4" />} label="In attesa" value={stats.pending} tone="pending" isActive={activeFilter === "pending"} onClick={() => setActiveFilter(activeFilter === "pending" ? null : "pending")} />
+        <StatCard icon={<CheckCircle2 className="h-4 w-4" />} label="Approvati" value={stats.approved} tone="approved" isActive={activeFilter === "approved"} onClick={() => setActiveFilter(activeFilter === "approved" ? null : "approved")} />
+        <StatCard icon={<FileEdit className="h-4 w-4" />} label="Modifiche richieste" value={stats.changes} tone="draft" isActive={activeFilter === "changes"} onClick={() => setActiveFilter(activeFilter === "changes" ? null : "changes")} />
       </div>
 
       <section>
@@ -97,14 +107,32 @@ function SmmDashboard() {
         </div>
       </section>
 
-      {recent.length > 0 && (
+      {(activeFilter !== null || displayedPosts.length > 0) && (
         <section>
-          <h2 className="mb-3 text-lg font-semibold">Activity feed globale</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {recent.map((p) => (
-              <PostCard key={p.id} post={p} onClick={() => setSelected(p.id)} />
-            ))}
+          <div className="mb-3 flex items-center gap-3">
+            <h2 className="text-lg font-semibold">
+              {activeFilter
+                ? ({ draft: "Bozze", pending: "In attesa", approved: "Approvati", changes: "Modifiche richieste" } as const)[activeFilter]
+                : "Activity feed globale"}
+            </h2>
+            {activeFilter && (
+              <button
+                onClick={() => setActiveFilter(null)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                × Cancella filtro
+              </button>
+            )}
           </div>
+          {displayedPosts.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {displayedPosts.map((p) => (
+                <PostCard key={p.id} post={p} onClick={() => setSelected(p.id)} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Nessun post in questa categoria.</p>
+          )}
         </section>
       )}
 
@@ -118,11 +146,15 @@ function StatCard({
   label,
   value,
   tone,
+  isActive,
+  onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   value: number;
   tone: "draft" | "pending" | "approved";
+  isActive: boolean;
+  onClick: () => void;
 }) {
   const toneClass = {
     draft: "bg-status-draft-soft text-status-draft",
@@ -130,12 +162,15 @@ function StatCard({
     approved: "bg-status-approved-soft text-[oklch(0.4_0.14_150)]",
   }[tone];
   return (
-    <div className="rounded-2xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
+    <button
+      onClick={onClick}
+      className={`w-full cursor-pointer rounded-2xl border bg-card p-4 text-left shadow-[var(--shadow-soft)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-elevated)] ${isActive ? "border-current ring-2 ring-current ring-offset-1" : "border-border"}`}
+    >
       <div className={`mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg ${toneClass}`}>
         {icon}
       </div>
       <div className="text-2xl font-bold">{value}</div>
       <div className="text-xs text-muted-foreground">{label}</div>
-    </div>
+    </button>
   );
 }

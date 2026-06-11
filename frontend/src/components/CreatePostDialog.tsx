@@ -33,6 +33,16 @@ export function CreatePostDialog({
   const [type, setType] = useState<PostType>("Post");
   const [date, setDate] = useState((initialDate ?? new Date().toISOString()).slice(0, 10));
 
+  // Reset completo quando il dialog si chiude (chiusura manuale o post-creazione)
+  useEffect(() => {
+    if (!open) {
+      setTitle("");
+      setCaption("");
+      setType("Post");
+      setDate(new Date().toISOString().slice(0, 10));
+    }
+  }, [open]);
+
   useEffect(() => {
     if (initialDate) setDate(initialDate.slice(0, 10));
   }, [initialDate]);
@@ -50,12 +60,9 @@ export function CreatePostDialog({
         type,
         date: `${date}T09:00:00`,
         status: "draft",
-        hasChangesRequested: false,
       });
       toast.success("Bozza creata");
-      setTitle("");
-      setCaption("");
-      onOpenChange(false);
+      onOpenChange(false); // il useEffect su `open` gestisce il reset
     } catch {
       toast.error("Errore durante la creazione del post");
     }

@@ -33,7 +33,7 @@ export function PostClientCard({
 
   const handleApprove = async () => {
     try {
-      await updateStatus.mutateAsync({ id: post.id, status: "approved" });
+      await updateStatus.mutateAsync({ id: post.id, status: "approved", brandId: post.brandId });
       toast.success("Post approvato! ✓");
       onActionComplete?.();
     } catch {
@@ -48,8 +48,9 @@ export function PostClientCard({
     }
     try {
       await updateStatus.mutateAsync({
-        id: post.id,
-        status: "revision_requested",
+        id:       post.id,
+        status:   "revision_requested",
+        brandId:  post.brandId,
         feedback: feedback.trim(),
       });
       toast.success("Richiesta inviata!");

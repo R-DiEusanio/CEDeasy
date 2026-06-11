@@ -21,7 +21,7 @@ function ClientDashboard() {
   const [view, setView] = useState<"list" | "calendar">("list");
   const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const transitionTimer = useRef<ReturnType<typeof setTimeout>>();
+  const transitionTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleViewChange = (newView: "list" | "calendar") => {
     if (newView === view) return;
