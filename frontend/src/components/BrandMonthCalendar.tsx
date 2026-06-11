@@ -1,4 +1,5 @@
-import type { Post, PostType, PostStatus } from "@/lib/mock-data";
+import type { Post, PostType } from "@/lib/mock-data";
+import { getVisualStatus } from "@/lib/status-config";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight, Plus, Image, Film, Layers, Sparkles } from "lucide-react";
@@ -6,11 +7,16 @@ import { useState } from "react";
 
 const WEEKDAYS = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"];
 
-const STATUS_BADGE: Record<PostStatus, string> = {
-  draft:    "bg-[oklch(0.96_0.04_25)]  text-[oklch(0.42_0.16_25)]",
-  pending:  "bg-[oklch(0.97_0.05_80)]  text-[oklch(0.45_0.13_72)]",
-  approved: "bg-[oklch(0.96_0.06_150)] text-[oklch(0.36_0.14_150)]",
-};
+function getPostPillClass(p: Post): string {
+  const vs = getVisualStatus(p.status, p.hasChangesRequested);
+  const map = {
+    draft: "bg-slate-100 text-slate-600",
+    pending: "bg-amber-50 text-amber-700",
+    changes_requested: "bg-rose-50 text-rose-700",
+    approved: "bg-emerald-50 text-emerald-700",
+  };
+  return map[vs];
+}
 
 function PostTypeIcon({ type }: { type: PostType }) {
   if (type === "Reel")      return <Film     className="h-3 w-3 shrink-0" />;
@@ -127,7 +133,7 @@ export function BrandMonthCalendar({
                         onClick={() => onSelectPost(p.id)}
                         className={cn(
                           "flex w-full items-center gap-1 truncate rounded-full px-1.5 py-0.5 text-left text-[10px] font-semibold transition-all hover:opacity-80 active:scale-95",
-                          STATUS_BADGE[p.status],
+                          getPostPillClass(p),
                         )}
                       >
                         <PostTypeIcon type={p.type} />

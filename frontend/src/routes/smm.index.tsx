@@ -6,7 +6,7 @@ import { getBrandHue, getBrandInitials } from "@/lib/mock-data";
 import { PostCard } from "@/components/PostCard";
 import { PostDetailDialog } from "@/components/PostDetailDialog";
 import { StatusDot } from "@/components/StatusBadge";
-import { ArrowRight, CheckCircle2, Clock, FileEdit, Loader2 } from "lucide-react";
+import { AlertTriangle, ArrowRight, CheckCircle2, Clock, FileEdit, Loader2 } from "lucide-react";
 
 export const Route = createFileRoute("/smm/")({
   component: SmmDashboard,
@@ -58,7 +58,7 @@ function SmmDashboard() {
         <StatCard icon={<FileEdit className="h-4 w-4" />} label="Bozze" value={stats.drafts} tone="draft" isActive={activeFilter === "draft"} onClick={() => setActiveFilter(activeFilter === "draft" ? null : "draft")} />
         <StatCard icon={<Clock className="h-4 w-4" />} label="In attesa" value={stats.pending} tone="pending" isActive={activeFilter === "pending"} onClick={() => setActiveFilter(activeFilter === "pending" ? null : "pending")} />
         <StatCard icon={<CheckCircle2 className="h-4 w-4" />} label="Approvati" value={stats.approved} tone="approved" isActive={activeFilter === "approved"} onClick={() => setActiveFilter(activeFilter === "approved" ? null : "approved")} />
-        <StatCard icon={<FileEdit className="h-4 w-4" />} label="Modifiche richieste" value={stats.changes} tone="draft" isActive={activeFilter === "changes"} onClick={() => setActiveFilter(activeFilter === "changes" ? null : "changes")} />
+        <StatCard icon={<AlertTriangle className="h-4 w-4" />} label="Modifiche richieste" value={stats.changes} tone="changes" isActive={activeFilter === "changes"} onClick={() => setActiveFilter(activeFilter === "changes" ? null : "changes")} />
       </div>
 
       <section>
@@ -152,14 +152,15 @@ function StatCard({
   icon: React.ReactNode;
   label: string;
   value: number;
-  tone: "draft" | "pending" | "approved";
+  tone: "draft" | "pending" | "approved" | "changes";
   isActive: boolean;
   onClick: () => void;
 }) {
   const toneClass = {
-    draft: "bg-status-draft-soft text-status-draft",
-    pending: "bg-status-pending-soft text-[oklch(0.45_0.13_70)]",
-    approved: "bg-status-approved-soft text-[oklch(0.4_0.14_150)]",
+    draft: "bg-slate-100 text-slate-600",
+    pending: "bg-amber-50 text-amber-700",
+    approved: "bg-emerald-50 text-emerald-700",
+    changes: "bg-rose-50 text-rose-700",
   }[tone];
   return (
     <button

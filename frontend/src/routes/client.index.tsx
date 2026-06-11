@@ -71,61 +71,49 @@ function ClientDashboard() {
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         {/* Colonna sinistra */}
         <div className="min-w-0 flex-1 space-y-6">
-        {/* Intestazione */}
-        <div>
-          <h1 className="text-2xl font-bold lg:text-3xl">Ciao! 👋</h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {pendingPosts.length > 0
-              ? `Hai ${pendingPosts.length} contenut${pendingPosts.length === 1 ? "o" : "i"} da revisionare.`
-              : "Nessun contenuto da revisionare al momento. Sei in pari! ✓"}
-          </p>
-        </div>
-
-        {/* Contatori */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Card — Da approvare */}
-          <div className="relative overflow-hidden rounded-2xl border border-[oklch(0.91_0.07_80)] bg-[oklch(0.97_0.04_80)] p-5 shadow-[var(--shadow-soft)] transition-all duration-200 hover:shadow-[var(--shadow-elevated)]">
-            <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-[oklch(0.78_0.16_80)] opacity-[0.08]" />
-            <div className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-xl bg-[oklch(0.93_0.09_80)] text-[oklch(0.52_0.14_70)]">
-              <Clock className="h-4 w-4" />
-            </div>
-            <div className="pr-12">
-              <div className="text-4xl font-bold tracking-tight text-[oklch(0.28_0.06_80)]">
-                {stats.pending.length}
+        {/* Contatore gigante — hero section */}
+        {pendingPosts.length > 0 ? (
+          <div className="overflow-hidden rounded-2xl border border-amber-200 bg-amber-50 p-5 shadow-[var(--shadow-soft)]">
+            <div className="flex items-center gap-4">
+              <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-amber-500 text-white shadow-md">
+                <Clock className="h-7 w-7" />
               </div>
-              <div className="mt-1 text-sm font-medium text-[oklch(0.48_0.08_75)]">
-                Da approvare
+              <div>
+                <div className="text-6xl font-bold leading-none tracking-tight text-amber-900">
+                  {pendingPosts.length}
+                </div>
+                <div className="mt-1 text-sm font-semibold text-amber-700">
+                  {pendingPosts.length === 1 ? "post da revisionare" : "post da revisionare"}
+                </div>
               </div>
             </div>
-            <div className="mt-4 border-t border-[oklch(0.91_0.07_80)] pt-3">
-              <span className="flex items-center gap-1 text-xs font-medium text-[oklch(0.55_0.1_70)]">
-                Richiede la tua revisione
-                <ArrowRight className="ml-auto h-3 w-3" />
-              </span>
+            <p className="mt-4 text-xs text-amber-700/80">
+              Tocca un post per approvarlo o richiedere modifiche.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 overflow-hidden rounded-2xl border border-emerald-200 bg-emerald-50 p-5 shadow-[var(--shadow-soft)]">
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-md">
+              <CheckCircle2 className="h-6 w-6" />
+            </div>
+            <div>
+              <div className="text-xl font-bold text-emerald-900">Sei in pari!</div>
+              <div className="mt-0.5 text-sm text-emerald-700">
+                Nessun contenuto da revisionare al momento.
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Card — Approvati questo mese */}
-          <div className="relative overflow-hidden rounded-2xl border border-[oklch(0.9_0.07_150)] bg-[oklch(0.97_0.04_150)] p-5 shadow-[var(--shadow-soft)] transition-all duration-200 hover:shadow-[var(--shadow-elevated)]">
-            <div className="absolute -right-3 -top-3 h-16 w-16 rounded-full bg-[oklch(0.68_0.17_150)] opacity-[0.08]" />
-            <div className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-xl bg-[oklch(0.93_0.09_150)] text-[oklch(0.42_0.15_150)]">
-              <CheckCircle2 className="h-4 w-4" />
-            </div>
-            <div className="pr-12">
-              <div className="text-4xl font-bold tracking-tight text-[oklch(0.25_0.06_150)]">
-                {stats.approvedThisMonth.length}
-              </div>
-              <div className="mt-1 text-sm font-medium text-[oklch(0.42_0.09_150)]">
-                Approvati questo mese
-              </div>
-            </div>
-            <div className="mt-4 border-t border-[oklch(0.9_0.07_150)] pt-3">
-              <span className="flex items-center gap-1 text-xs font-medium text-[oklch(0.48_0.12_150)]">
-                Visualizza storico
-                <ArrowRight className="ml-auto h-3 w-3" />
-              </span>
-            </div>
+        {/* Stat secondaria — approvati questo mese */}
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-soft)]">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+            <CheckCircle2 className="h-4 w-4" />
           </div>
+          <span className="text-sm text-muted-foreground">Approvati questo mese</span>
+          <span className="ml-auto text-2xl font-bold tabular-nums">
+            {stats.approvedThisMonth.length}
+          </span>
         </div>
 
         {/* Toggle vista */}
@@ -167,16 +155,16 @@ function ClientDashboard() {
       {isTransitioning && <PostSkeletonGrid count={6} />}
 
       {/* Vista Calendario: 2 colonne su desktop (calendario + sidebar) */}
-      {!isTransitioning && view === "calendar" && posts.length > 0 && (
+      {!isTransitioning && view === "calendar" && pendingPosts.length > 0 && (
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <div className="min-w-0 flex-1">
             <BrandMonthCalendar
-              posts={posts}
+              posts={pendingPosts}
               onSelectPost={(id) => setSelectedPostId(id)}
             />
           </div>
           <div className="hidden w-64 shrink-0 lg:sticky lg:top-8 lg:block">
-            <CalendarSidebar posts={posts} />
+            <CalendarSidebar posts={pendingPosts} />
           </div>
         </div>
       )}
@@ -187,9 +175,9 @@ function ClientDashboard() {
           {pendingPosts.length > 0 && (
             <section className="space-y-4">
               <div className="flex items-center gap-3">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[oklch(0.75_0.13_70)]" />
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-400" />
                 <h2 className="text-base font-semibold">Da approvare</h2>
-                <span className="ml-auto rounded-full bg-[oklch(0.97_0.04_80)] px-2.5 py-0.5 text-xs font-medium text-[oklch(0.52_0.14_70)]">
+                <span className="ml-auto rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
                   {pendingPosts.length}
                 </span>
               </div>
@@ -201,29 +189,10 @@ function ClientDashboard() {
             </section>
           )}
 
-          {approvedPosts.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-[oklch(0.5_0.15_150)]" />
-                <h2 className="text-base font-semibold text-muted-foreground">
-                  Già approvati
-                </h2>
-                <span className="ml-auto rounded-full bg-[oklch(0.97_0.04_150)] px-2.5 py-0.5 text-xs font-medium text-[oklch(0.42_0.15_150)]">
-                  {approvedPosts.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
-                {approvedPosts.map((p) => (
-                  <PostClientCard key={p.id} post={p} />
-                ))}
-              </div>
-            </section>
-          )}
-
-          {posts.length === 0 && (
+          {pendingPosts.length === 0 && (
             <div className="rounded-2xl border border-dashed border-border p-12 text-center">
               <p className="text-sm text-muted-foreground">
-                Nessun contenuto disponibile. Il tuo social media manager sta preparando i post.
+                Nessun contenuto da revisionare. Controlla i post approvati nella sezione "Approvati".
               </p>
             </div>
           )}

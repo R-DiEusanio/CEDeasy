@@ -131,6 +131,69 @@ export async function getRecentPosts(): Promise<Post[]> {
   return (data as DbPost[]).map(toPost);
 }
 
+// ─── Activity Feed ────────────────────────────────────────────────────────────
+
+export interface Activity {
+  id: string;
+  type: "new_post" | "approved" | "revision_requested";
+  message: string;
+  time: string;
+  timestamp: Date;
+}
+
+function formatTimeAgo(date: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return "ora";
+  if (diffMins < 60) return `${diffMins}m fa`;
+  if (diffHours < 24) return `${diffHours}h fa`;
+  if (diffDays === 1) return "ieri";
+  if (diffDays < 7) return `${diffDays} giorni fa`;
+  return `${Math.floor(diffDays / 7)} settimane fa`;
+}
+
+function toActivity(row: DbPost): Activity {
+  const timestamp = new Date(row.updated_at || row.created_at || new Date());
+  let type: Activity["type"] = "new_post";
+  let message = `SMM ha caricato un nuovo ${row.platform}`;
+
+  if (row.status === "APPROVED" || row.status === "PUBLISHED") {
+    type = "approved";
+    message = `Hai approvato "${row.title}"`;
+  } else if (row.status === "CHANGES_REQUESTED") {
+    type = "revision_requested";
+    message = `Modifica inviata per "${row.title}"`;
+  }
+
+  return {
+    id: row.id,
+    type,
+    message,
+    time: formatTimeAgo(timestamp),
+    timestamp,
+  };
+}
+
+// Attività recenti: ultimi 7 giorni, ordinati per updated_at descending
+export async function getRecentActivities(): Promise<Activity[]> {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*")
+    .gte("updated_at", sevenDaysAgo.toISOString())
+    .order("updated_at", { ascending: false })
+    .limit(6);
+
+  if (error) throw new Error(error.message);
+  return (data as DbPost[]).map(toActivity);
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export async function createPost(dto: Omit<Post, "id" | "hasChangesRequested">): Promise<Post> {

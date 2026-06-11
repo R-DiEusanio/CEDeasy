@@ -81,14 +81,14 @@ export function ClientSidebar() {
           </span>
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-xs">
-              <Clock className="h-3.5 w-3.5 shrink-0 text-[oklch(0.65_0.13_70)]" />
+              <Clock className="h-3.5 w-3.5 shrink-0 text-amber-500" />
               <span className="text-muted-foreground">Da approvare</span>
               <span className="ml-auto font-semibold tabular-nums">
                 {pendingCount}
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs">
-              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-[oklch(0.5_0.14_150)]" />
+              <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
               <span className="text-muted-foreground">Approvati</span>
               <span className="ml-auto font-semibold tabular-nums">
                 {approvedCount}

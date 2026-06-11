@@ -74,7 +74,7 @@ export function MonthCalendar({
                         onClick={() => onSelect(p.id)}
                         className="flex w-full items-center gap-1.5 truncate rounded-md bg-card px-1.5 py-1 text-left text-[10px] font-medium shadow-sm transition-colors hover:bg-accent"
                       >
-                        <StatusDot status={p.status} />
+                        <StatusDot status={p.status} hasChanges={p.hasChangesRequested} />
                         <span className="truncate">{p.title}</span>
                       </button>
                     ))}

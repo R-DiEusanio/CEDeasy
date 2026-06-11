@@ -17,6 +17,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SmmIndexRouteImport } from './routes/smm.index'
 import { Route as ClientIndexRouteImport } from './routes/client.index'
 import { Route as SmmBrandsRouteImport } from './routes/smm.brands'
+import { Route as ClientApprovedRouteImport } from './routes/client.approved'
 import { Route as SmmBrandBrandIdRouteImport } from './routes/smm.brand.$brandId'
 
 const SmmRoute = SmmRouteImport.update({
@@ -59,6 +60,11 @@ const SmmBrandsRoute = SmmBrandsRouteImport.update({
   path: '/brands',
   getParentRoute: () => SmmRoute,
 } as any)
+const ClientApprovedRoute = ClientApprovedRouteImport.update({
+  id: '/approved',
+  path: '/approved',
+  getParentRoute: () => ClientRoute,
+} as any)
 const SmmBrandBrandIdRoute = SmmBrandBrandIdRouteImport.update({
   id: '/brand/$brandId',
   path: '/brand/$brandId',
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/smm': typeof SmmRouteWithChildren
+  '/client/approved': typeof ClientApprovedRoute
   '/smm/brands': typeof SmmBrandsRoute
   '/client/': typeof ClientIndexRoute
   '/smm/': typeof SmmIndexRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
+  '/client/approved': typeof ClientApprovedRoute
   '/smm/brands': typeof SmmBrandsRoute
   '/client': typeof ClientIndexRoute
   '/smm': typeof SmmIndexRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/register': typeof RegisterRoute
   '/smm': typeof SmmRouteWithChildren
+  '/client/approved': typeof ClientApprovedRoute
   '/smm/brands': typeof SmmBrandsRoute
   '/client/': typeof ClientIndexRoute
   '/smm/': typeof SmmIndexRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/smm'
+    | '/client/approved'
     | '/smm/brands'
     | '/client/'
     | '/smm/'
@@ -114,6 +124,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/register'
+    | '/client/approved'
     | '/smm/brands'
     | '/client'
     | '/smm'
@@ -125,6 +136,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/register'
     | '/smm'
+    | '/client/approved'
     | '/smm/brands'
     | '/client/'
     | '/smm/'
@@ -197,6 +209,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SmmBrandsRouteImport
       parentRoute: typeof SmmRoute
     }
+    '/client/approved': {
+      id: '/client/approved'
+      path: '/approved'
+      fullPath: '/client/approved'
+      preLoaderRoute: typeof ClientApprovedRouteImport
+      parentRoute: typeof ClientRoute
+    }
     '/smm/brand/$brandId': {
       id: '/smm/brand/$brandId'
       path: '/brand/$brandId'
@@ -208,10 +227,12 @@ declare module '@tanstack/react-router' {
 }
 
 interface ClientRouteChildren {
+  ClientApprovedRoute: typeof ClientApprovedRoute
   ClientIndexRoute: typeof ClientIndexRoute
 }
 
 const ClientRouteChildren: ClientRouteChildren = {
+  ClientApprovedRoute: ClientApprovedRoute,
   ClientIndexRoute: ClientIndexRoute,
 }
 

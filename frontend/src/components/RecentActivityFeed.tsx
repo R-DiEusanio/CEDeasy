@@ -1,57 +1,11 @@
 import type { ElementType } from "react";
 import { CheckCircle2, Clock, Upload, MessageSquare } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-type ActivityType = "new_post" | "approved" | "revision_requested";
-
-interface ActivityItem {
-  id: string;
-  type: ActivityType;
-  message: string;
-  time: string;
-}
-
-const ACTIVITIES: ActivityItem[] = [
-  {
-    id: "1",
-    type: "new_post",
-    message: "SMM ha caricato un nuovo Reel",
-    time: "2 ore fa",
-  },
-  {
-    id: "2",
-    type: "approved",
-    message: 'Hai approvato "Post estivo 2025"',
-    time: "ieri",
-  },
-  {
-    id: "3",
-    type: "new_post",
-    message: "Nuovo Carosello in attesa di revisione",
-    time: "2 giorni fa",
-  },
-  {
-    id: "4",
-    type: "revision_requested",
-    message: 'Modifica inviata per "Story lancio"',
-    time: "3 giorni fa",
-  },
-  {
-    id: "5",
-    type: "new_post",
-    message: "SMM ha caricato un nuovo Post",
-    time: "4 giorni fa",
-  },
-  {
-    id: "6",
-    type: "approved",
-    message: 'Hai approvato "Reel promo agosto"',
-    time: "5 giorni fa",
-  },
-];
+import { useRecentActivities } from "@/lib/queries";
+import type { Activity } from "@/lib/supabase/posts";
 
 const TYPE_CONFIG: Record<
-  ActivityType,
+  Activity["type"],
   { icon: ElementType; bg: string; color: string; dot: string }
 > = {
   new_post: {
@@ -75,6 +29,7 @@ const TYPE_CONFIG: Record<
 };
 
 export function RecentActivityFeed() {
+  const { data: activities = [], isLoading } = useRecentActivities();
   return (
     <div className="flex h-full flex-col rounded-2xl border border-border bg-card shadow-[var(--shadow-soft)]">
       {/* Header */}
@@ -87,45 +42,55 @@ export function RecentActivityFeed() {
 
       {/* Feed */}
       <div className="flex-1 py-2">
-        {ACTIVITIES.map((item, idx) => {
-          const cfg = TYPE_CONFIG[item.type];
-          const Icon = cfg.icon;
-          const isLast = idx === ACTIVITIES.length - 1;
+        {isLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-muted-foreground">Caricamento attività...</p>
+          </div>
+        ) : activities.length === 0 ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-xs text-muted-foreground">Nessuna attività recente</p>
+          </div>
+        ) : (
+          activities.map((item, idx) => {
+            const cfg = TYPE_CONFIG[item.type];
+            const Icon = cfg.icon;
+            const isLast = idx === activities.length - 1;
 
-          return (
-            <div
-              key={item.id}
-              className="group relative flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-muted/50"
-            >
-              {/* Linea verticale timeline (non sull'ultimo) */}
-              {!isLast && (
-                <span
-                  className="absolute left-[30px] top-[38px] h-[calc(100%-14px)] w-px bg-border"
-                  aria-hidden
-                />
-              )}
-
-              {/* Icona */}
+            return (
               <div
-                className={cn(
-                  "relative z-10 mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg",
-                  cfg.bg,
-                  cfg.color,
-                )}
+                key={item.id}
+                className="group relative flex items-start gap-3 px-4 py-2.5 transition-colors hover:bg-muted/50"
               >
-                <Icon className="h-3.5 w-3.5" />
-              </div>
+                {/* Linea verticale timeline (non sull'ultimo) */}
+                {!isLast && (
+                  <span
+                    className="absolute left-[30px] top-[38px] h-[calc(100%-14px)] w-px bg-border"
+                    aria-hidden
+                  />
+                )}
 
-              {/* Testo */}
-              <div className="min-w-0 flex-1 pt-0.5">
-                <p className="text-xs leading-snug text-foreground">{item.message}</p>
-                <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
-                  {item.time}
-                </p>
+                {/* Icona */}
+                <div
+                  className={cn(
+                    "relative z-10 mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg",
+                    cfg.bg,
+                    cfg.color,
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+
+                {/* Testo */}
+                <div className="min-w-0 flex-1 pt-0.5">
+                  <p className="text-xs leading-snug text-foreground">{item.message}</p>
+                  <p className="mt-0.5 text-[10px] tabular-nums text-muted-foreground">
+                    {item.time}
+                  </p>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       {/* Footer */}

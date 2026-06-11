@@ -4,11 +4,12 @@ import type { Brand, Post, ProfileDTO } from "./mock-data";
 import { getMyProfile, upsertProfile }                    from "./supabase/profiles";
 import { getBrands, createBrand, updateBrand, deleteBrand } from "./supabase/brands";
 import {
-  getPosts, getClientPosts, getRecentPosts,
+  getPosts, getClientPosts, getRecentPosts, getRecentActivities,
   createPost, updatePost, deletePost, updatePostStatus,
 } from "./supabase/posts";
 import { getComments, addComment } from "./supabase/comments";
 import type { Comment } from "./supabase/comments";
+import type { Activity } from "./supabase/posts";
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -63,6 +64,16 @@ export function useDeleteBrand() {
   return useMutation({
     mutationFn: (vars: { id: string; smmId: string }) => deleteBrand(vars.id),
     onSuccess:  () => qc.invalidateQueries({ queryKey: ["brands"] }),
+  });
+}
+
+// ─── Activities ───────────────────────────────────────────────────────────────
+
+export function useRecentActivities() {
+  return useQuery<Activity[]>({
+    queryKey:       ["activities", "recent"],
+    queryFn:        getRecentActivities,
+    refetchInterval: POST_POLL_MS,
   });
 }
 
