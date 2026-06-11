@@ -19,10 +19,16 @@ await writeFile(
   `import server from './server.js';\nexport default (request) => server.fetch(request);\n`,
 );
 
+// Node.js requires package.json with "type":"module" to parse ESM files (.js with import/export)
+await writeFile(
+  `${OUT}/functions/ssr.func/package.json`,
+  JSON.stringify({ type: 'module' }, null, 2),
+);
+
 // Vercel function config (Node.js runtime, web-standard handler)
 await writeFile(
   `${OUT}/functions/ssr.func/.vc-config.json`,
-  JSON.stringify({ runtime: 'nodejs22.x', handler: 'index.js', launchAt: 'build' }, null, 2),
+  JSON.stringify({ runtime: 'nodejs22.x', handler: 'index.js' }, null, 2),
 );
 
 // Routing: serve hashed assets directly with long cache, everything else → SSR
