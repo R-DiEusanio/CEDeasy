@@ -41,6 +41,7 @@ function BrandPage() {
   const [view, setView] = useState<ViewMode>(
     typeof window !== "undefined" && window.innerWidth < 1024 ? "list" : "kanban",
   );
+  const [kanbanTab, setKanbanTab] = useState("draft");
   const [selected, setSelected] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createDate, setCreateDate] = useState<string | undefined>(undefined);
@@ -181,26 +182,38 @@ function BrandPage() {
       )}
 
       {view === "kanban" && (
-        <div className="overflow-x-auto pb-4">
-          <div className="flex min-w-max gap-3 lg:min-w-0">
-            {kanbanColumns.map((col) => (
-              <div key={col.id} className="w-72 shrink-0 lg:w-auto lg:flex-1">
-                {/* Column header */}
-                <div
+        <>
+          {/* Mobile: tab strip + single column */}
+          <div className="lg:hidden">
+            <div className="mb-3 flex gap-1 overflow-x-auto rounded-xl border border-border bg-card p-1">
+              {kanbanColumns.map((col) => (
+                <button
+                  key={col.id}
+                  onClick={() => setKanbanTab(col.id)}
                   className={cn(
-                    "mb-3 flex items-center gap-2 rounded-xl border px-3 py-2",
-                    col.headerClass,
+                    "flex flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium whitespace-nowrap transition-colors",
+                    kanbanTab === col.id
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground",
                   )}
                 >
-                  <span className={cn("h-2 w-2 rounded-full", col.dotClass)} />
-                  <span className="text-sm font-semibold">{col.label}</span>
-                  <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold tabular-nums">
+                  <span className={cn("h-2 w-2 shrink-0 rounded-full", col.dotClass)} />
+                  {col.label}
+                  <span
+                    className={cn(
+                      "rounded-full px-1.5 py-0.5 text-[10px] font-semibold tabular-nums",
+                      kanbanTab === col.id ? "bg-white/20 text-white" : "bg-muted",
+                    )}
+                  >
                     {col.posts.length}
                   </span>
-                </div>
-
-                {/* Cards */}
-                <div className="min-h-28 space-y-2 rounded-xl bg-muted/40 p-2">
+                </button>
+              ))}
+            </div>
+            {kanbanColumns
+              .filter((col) => col.id === kanbanTab)
+              .map((col) => (
+                <div key={col.id} className="min-h-28 space-y-2 rounded-xl bg-muted/40 p-2">
                   {col.posts.length === 0 ? (
                     <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
                       Nessun post
@@ -211,10 +224,42 @@ function BrandPage() {
                     ))
                   )}
                 </div>
-              </div>
-            ))}
+              ))}
           </div>
-        </div>
+
+          {/* Desktop: multi-column layout */}
+          <div className="hidden overflow-x-auto pb-4 lg:block">
+            <div className="flex gap-3">
+              {kanbanColumns.map((col) => (
+                <div key={col.id} className="flex-1">
+                  <div
+                    className={cn(
+                      "mb-3 flex items-center gap-2 rounded-xl border px-3 py-2",
+                      col.headerClass,
+                    )}
+                  >
+                    <span className={cn("h-2 w-2 rounded-full", col.dotClass)} />
+                    <span className="text-sm font-semibold">{col.label}</span>
+                    <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-xs font-semibold tabular-nums">
+                      {col.posts.length}
+                    </span>
+                  </div>
+                  <div className="min-h-28 space-y-2 rounded-xl bg-muted/40 p-2">
+                    {col.posts.length === 0 ? (
+                      <div className="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground">
+                        Nessun post
+                      </div>
+                    ) : (
+                      col.posts.map((p) => (
+                        <PostCard key={p.id} post={p} onClick={() => setSelected(p.id)} compact />
+                      ))
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
       )}
 
       {view === "list" && (
