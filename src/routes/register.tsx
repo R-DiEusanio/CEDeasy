@@ -149,7 +149,7 @@ function RegisterPage() {
               className="h-11 font-mono text-sm"
             />
             <p className="text-[11px] text-muted-foreground">
-              Chiedi all'SMM di copiarti l'ID dal pannello brand.
+              Chiedi all'SMM di copiarti l'ID dal pannello clienti.
             </p>
             {errors.brandId && (
               <p className="text-xs font-medium text-destructive">{errors.brandId}</p>

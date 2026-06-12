@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useAppStore } from "@/lib/app-store";
 import { useBrands } from "@/lib/queries";
 import { getBrandHue, getBrandInitials } from "@/lib/mock-data";
-import { Loader2 } from "lucide-react";
+import { CreateBrandDialog } from "@/components/CreateBrandDialog";
+import { Loader2, Plus } from "lucide-react";
+import { useState } from "react";
 
 export const Route = createFileRoute("/smm/brands")({
   component: BrandsPage,
@@ -11,6 +13,7 @@ export const Route = createFileRoute("/smm/brands")({
 function BrandsPage() {
   const { userId } = useAppStore();
   const { data: brands = [], isLoading } = useBrands(userId);
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
@@ -22,10 +25,20 @@ function BrandsPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-4 py-6">
-      <h1 className="text-2xl font-bold">I tuoi brand</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">I tuoi clienti</h1>
+        <button
+          onClick={() => setCreateDialogOpen(true)}
+          className="flex items-center justify-center rounded-xl p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          title="Nuovo cliente"
+          aria-label="Aggiungi nuovo cliente"
+        >
+          <Plus className="h-5 w-5" />
+        </button>
+      </div>
       <div className="space-y-3">
         {brands.length === 0 && (
-          <p className="text-sm text-muted-foreground">Nessun brand ancora. Creane uno dalla dashboard.</p>
+          <p className="text-sm text-muted-foreground">Nessun cliente ancora. Creane uno dalla dashboard.</p>
         )}
         {brands.map((b) => {
           const hue = getBrandHue(b.id);
@@ -54,6 +67,7 @@ function BrandsPage() {
           );
         })}
       </div>
+      <CreateBrandDialog open={createDialogOpen} onOpenChange={setCreateDialogOpen} />
     </div>
   );
 }

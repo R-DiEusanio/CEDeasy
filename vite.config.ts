@@ -15,11 +15,8 @@ export default defineConfig({
       entry: "server",
     },
   },
-  // AGGIUNGIAMO QUESTO BLOCCO PER SPOSTARE LA PORTA
   vite: {
-    ssr: {
-      noExternal: true,
-    },
+    ssr: process.env.NODE_ENV === "production" ? { noExternal: true } : {},
     server: {
       port: 3000,
       strictPort: true,

@@ -16,7 +16,7 @@ export const Route = createFileRoute("/smm/brand/$brandId")({
   component: BrandPage,
   notFoundComponent: () => (
     <div className="p-8 text-center">
-      <p className="mb-3 text-muted-foreground">Brand non trovato</p>
+      <p className="mb-3 text-muted-foreground">Cliente non trovato</p>
       <Link to="/smm" className="text-primary underline">
         Torna alla dashboard
       </Link>
@@ -128,7 +128,7 @@ function BrandPage() {
         <Button
           variant="outline"
           size="sm"
-          className="hidden sm:inline-flex"
+          className="inline-flex"
           onClick={() => {
             navigator.clipboard.writeText(brandId);
             toast.success("ID brand copiato — incollalo al cliente");
@@ -146,8 +146,8 @@ function BrandPage() {
         <div className="inline-flex rounded-xl border border-border bg-card p-1 text-sm">
           {(
             [
-              { id: "calendar", label: "Calendario", Icon: CalendarDays },
               { id: "kanban", label: "Kanban", Icon: Kanban },
+              { id: "calendar", label: "Calendario", Icon: CalendarDays },
               { id: "list", label: "Lista", Icon: LayoutList },
             ] as { id: ViewMode; label: string; Icon: React.ComponentType<{ className?: string }> }[]
           ).map(({ id, label, Icon }) => (

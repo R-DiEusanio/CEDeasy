@@ -62,7 +62,7 @@ function SmmDashboard() {
       </div>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">Brand</h2>
+        <h2 className="mb-3 text-lg font-semibold">Clienti</h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {brands.map((b) => {
             const hue = getBrandHue(b.id);

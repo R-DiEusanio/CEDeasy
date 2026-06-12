@@ -22,7 +22,7 @@ export function CreateBrandDialog({
 
   const handleCreate = async () => {
     if (!name.trim()) {
-      toast.error("Inserisci il nome del brand");
+      toast.error("Inserisci il nome del cliente");
       return;
     }
     if (!userId) return;
@@ -32,12 +32,12 @@ export function CreateBrandDialog({
         category: category.trim() || undefined,
         smmId: userId,
       });
-      toast.success("Brand creato!");
+      toast.success("Cliente creato!");
       setName("");
       setCategory("");
       onOpenChange(false);
     } catch {
-      toast.error("Errore durante la creazione del brand");
+      toast.error("Errore durante la creazione del cliente");
     }
   };
 
@@ -49,7 +49,7 @@ export function CreateBrandDialog({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-1.5">
-            <Label>Nome brand</Label>
+            <Label>Nome cliente</Label>
             <Input
               autoFocus
               value={name}
@@ -80,7 +80,7 @@ export function CreateBrandDialog({
                 <Loader2 className="h-4 w-4 animate-spin" /> Creazione…
               </>
             ) : (
-              "Crea brand"
+              "Crea cliente"
             )}
           </Button>
         </div>
