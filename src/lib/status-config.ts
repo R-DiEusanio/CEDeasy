@@ -1,44 +1,49 @@
-import { AlertTriangle, Check, Clock, FileText } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import type { PostStatus } from "./mock-data";
+import { AlertTriangle, Check, Clock, FileText } from 'lucide-react-native'
+import type { LucideIcon } from 'lucide-react-native'
+import type { PostStatus } from './mock-data'
 
-export type VisualStatus = "draft" | "pending" | "changes_requested" | "approved";
+export type VisualStatus = 'draft' | 'pending' | 'changes_requested' | 'approved'
 
 export interface StatusConfig {
-  label: string;
-  Icon: LucideIcon;
-  dotClass: string;
-  badgeClass: string;
+  label: string
+  Icon: LucideIcon
+  dotColor: string
+  badgeColor: string
+  badgeTextColor: string
 }
 
 export const STATUS_CONFIG: Record<VisualStatus, StatusConfig> = {
   draft: {
-    label: "Bozza privata",
+    label: 'Bozza privata',
     Icon: FileText,
-    dotClass: "bg-slate-400",
-    badgeClass: "bg-slate-100 text-slate-600",
+    dotColor: '#94a3b8',
+    badgeColor: '#f1f5f9',
+    badgeTextColor: '#475569',
   },
   pending: {
-    label: "In approvazione",
+    label: 'In approvazione',
     Icon: Clock,
-    dotClass: "bg-amber-500",
-    badgeClass: "bg-amber-50 text-amber-700",
+    dotColor: '#f59e0b',
+    badgeColor: '#fffbeb',
+    badgeTextColor: '#b45309',
   },
   changes_requested: {
-    label: "Modifica richiesta",
+    label: 'Modifica richiesta',
     Icon: AlertTriangle,
-    dotClass: "bg-rose-500",
-    badgeClass: "bg-rose-50 text-rose-700",
+    dotColor: '#f43f5e',
+    badgeColor: '#fff1f2',
+    badgeTextColor: '#be123c',
   },
   approved: {
-    label: "Approvato",
+    label: 'Approvato',
     Icon: Check,
-    dotClass: "bg-emerald-500",
-    badgeClass: "bg-emerald-50 text-emerald-700",
+    dotColor: '#10b981',
+    badgeColor: '#ecfdf5',
+    badgeTextColor: '#047857',
   },
-};
+}
 
 export function getVisualStatus(status: PostStatus, hasChanges?: boolean): VisualStatus {
-  if (hasChanges && status === "draft") return "changes_requested";
-  return status;
+  if (hasChanges && status === 'draft') return 'changes_requested'
+  return status
 }
