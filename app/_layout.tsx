@@ -44,13 +44,6 @@ function AuthGuard() {
   const segments = useSegments()
   const router = useRouter()
 
-  // Nascondi la splash quando la sessione è stata verificata
-  useEffect(() => {
-    if (isReady) {
-      SplashScreen.hideAsync()
-    }
-  }, [isReady])
-
   useEffect(() => {
     if (!isReady) return
 
@@ -61,7 +54,13 @@ function AuthGuard() {
     } else if (userId && inAuth) {
       router.replace(role === 'smm' ? '/(smm)' : '/(client)')
     }
+
+    // Nascondi la splash dopo la decisione di routing, non prima
+    SplashScreen.hideAsync()
   }, [isReady, userId, role, segments])
+
+  // Non renderizzare nessuna schermata finché l'auth non è determinata
+  if (!isReady) return null
 
   return <Slot />
 }

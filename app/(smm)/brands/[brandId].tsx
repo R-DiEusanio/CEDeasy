@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
-import { Calendar } from 'react-native-calendars'
 import { ArrowLeft, CalendarDays, Plus } from 'lucide-react-native'
 import type { BottomSheetModal } from '../../../components/ui/BottomSheet'
 import { usePosts, useBrands } from '../../../src/lib/queries'
@@ -10,6 +9,7 @@ import type { Post } from '../../../src/lib/mock-data'
 import { PostCard } from '../../../components/PostCard'
 import { CreatePostSheet } from '../../../components/CreatePostSheet'
 import { PostDetailSheet } from '../../../components/PostDetailSheet'
+import { ContentGrid } from '../../../components/ContentGrid'
 import { EmptyState } from '../../../components/ui/EmptyState'
 import { SkeletonCard } from '../../../components/ui/SkeletonLoader'
 import { colors } from '../../../constants/colors'
@@ -21,37 +21,12 @@ export default function BrandDetailScreen() {
   const { userId } = useAppStore()
   const { data: brands } = useBrands(userId)
   const { data: posts, isLoading, refetch } = usePosts(brandId)
-  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
+  const [defaultDate, setDefaultDate] = useState<Date | undefined>(undefined)
   const createSheetRef = useRef<BottomSheetModal>(null)
   const detailSheetRef = useRef<BottomSheetModal>(null)
 
   const brand = brands?.find((b) => b.id === brandId)
-
-  const markedDates = useMemo(() => {
-    const marks: Record<string, object> = {}
-    posts?.forEach((post) => {
-      const day = post.date.split('T')[0]
-      marks[day] = { marked: true, dotColor: colors.primary }
-    })
-    if (selectedDay) {
-      marks[selectedDay] = {
-        ...(marks[selectedDay] ?? {}),
-        selected: true,
-        selectedColor: colors.primary,
-      }
-    }
-    return marks
-  }, [posts, selectedDay])
-
-  const filteredPosts = useMemo(() => {
-    if (!selectedDay) return posts ?? []
-    return (posts ?? []).filter((p) => p.date.startsWith(selectedDay))
-  }, [posts, selectedDay])
-
-  const formattedDay = selectedDay
-    ? selectedDay.split('-').reverse().join('/')
-    : null
 
   const openPost = (post: Post) => {
     setSelectedPost(post)
@@ -76,7 +51,7 @@ export default function BrandDetailScreen() {
       </View>
 
       <FlatList
-        data={filteredPosts}
+        data={posts ?? []}
         keyExtractor={(p) => p.id}
         contentContainerStyle={styles.list}
         refreshControl={
@@ -88,35 +63,17 @@ export default function BrandDetailScreen() {
         }
         ListHeaderComponent={
           <>
-            <Calendar
-              markedDates={markedDates}
-              onDayPress={(day: { dateString: string }) =>
-                setSelectedDay((prev) =>
-                  prev === day.dateString ? null : day.dateString
-                )
-              }
-              theme={{
-                todayTextColor: colors.primary,
-                selectedDayBackgroundColor: colors.primary,
-                dotColor: colors.primary,
-                selectedDotColor: '#fff',
-                arrowColor: colors.primary,
-                monthTextColor: colors.text.primary,
-                textDayFontSize: 14,
-                textMonthFontSize: 15,
-                textDayHeaderFontSize: 12,
-                calendarBackground: colors.background,
+            <ContentGrid
+              posts={posts ?? []}
+              brandId={brandId}
+              onDayPress={(date) => {
+                setDefaultDate(date)
+                createSheetRef.current?.present()
               }}
+              onPostPress={(post) => openPost(post)}
             />
             <View style={styles.postsHeader}>
-              <Text style={styles.sectionTitle}>
-                {formattedDay ? `Post del ${formattedDay}` : 'Tutti i post'}
-              </Text>
-              {selectedDay && (
-                <Pressable onPress={() => setSelectedDay(null)}>
-                  <Text style={styles.clearBtn}>Mostra tutti</Text>
-                </Pressable>
-              )}
+              <Text style={styles.sectionTitle}>Tutti i post</Text>
             </View>
           </>
         }
@@ -130,11 +87,7 @@ export default function BrandDetailScreen() {
             <EmptyState
               icon={CalendarDays}
               title="Nessun post"
-              subtitle={
-                selectedDay
-                  ? 'Nessun post per questa data'
-                  : 'Nessun post per questo cliente'
-              }
+              subtitle="Nessun post per questo cliente"
             />
           )
         }
@@ -154,7 +107,7 @@ export default function BrandDetailScreen() {
         <Plus size={26} color="#fff" />
       </Pressable>
 
-      <CreatePostSheet sheetRef={createSheetRef} brandId={brandId} />
+      <CreatePostSheet sheetRef={createSheetRef} brandId={brandId} defaultDate={defaultDate} />
       <PostDetailSheet sheetRef={detailSheetRef} post={selectedPost} />
     </View>
   )
@@ -179,14 +132,13 @@ const styles = StyleSheet.create({
   brandCategory: { ...typography.small, color: colors.primary },
   list: { paddingBottom: 100 },
   postsHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
   },
   sectionTitle: { ...typography.h3, color: colors.text.primary },
-  clearBtn: { ...typography.small, color: colors.primary },
   postItem: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   skeletons: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   fab: {

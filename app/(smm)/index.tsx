@@ -1,17 +1,34 @@
-import { ScrollView, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { useEffect, useState } from 'react'
+import { ScrollView, RefreshControl, StyleSheet, Text, View, Pressable } from 'react-native'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { Activity as ActivityIcon, Bell } from 'lucide-react-native'
 import { useRecentActivities, useRecentPosts } from '../../src/lib/queries'
 import { useAppStore } from '../../src/lib/app-store'
+import type { SmmMode } from '../../src/lib/app-store'
 import { ActivityCard } from '../../components/ActivityCard'
 import { PostCard } from '../../components/PostCard'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { SkeletonCard } from '../../components/ui/SkeletonLoader'
+import { OnboardingModal, ONBOARDING_KEY } from '../../components/OnboardingModal'
 import { colors } from '../../constants/colors'
-import { spacing } from '../../constants/spacing'
+import { spacing, radius } from '../../constants/spacing'
 import { typography } from '../../constants/typography'
 
+const MODES: { value: SmmMode; label: string }[] = [
+  { value: 'consulenza', label: 'Consulenza' },
+  { value: 'gestione',   label: 'Gestione'   },
+]
+
 export default function SmmDashboardScreen() {
-  const { userId } = useAppStore()
+  const { userId, smmMode, setSmmMode } = useAppStore()
+  const [showOnboarding, setShowOnboarding] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem(ONBOARDING_KEY).then((done) => {
+      if (!done) setShowOnboarding(true)
+    })
+  }, [])
+
   const {
     data: activities,
     isLoading: loadingActivities,
@@ -28,6 +45,11 @@ export default function SmmDashboardScreen() {
   }
 
   return (
+    <>
+    <OnboardingModal
+      visible={showOnboarding}
+      onDone={() => setShowOnboarding(false)}
+    />
     <ScrollView
       style={styles.screen}
       contentContainerStyle={styles.content}
@@ -40,6 +62,24 @@ export default function SmmDashboardScreen() {
       }
     >
       <Text style={styles.heading}>Dashboard</Text>
+
+      {/* Switch Consulenza / Gestione */}
+      <View style={styles.modeSwitch}>
+        {MODES.map((mode) => {
+          const active = smmMode === mode.value
+          return (
+            <Pressable
+              key={mode.value}
+              style={[styles.modeBtn, active && styles.modeBtnActive]}
+              onPress={() => setSmmMode(mode.value)}
+            >
+              <Text style={[styles.modeBtnLabel, active && styles.modeBtnLabelActive]}>
+                {mode.label}
+              </Text>
+            </Pressable>
+          )
+        })}
+      </View>
 
       {/* Attività recenti */}
       <View style={styles.section}>
@@ -87,6 +127,7 @@ export default function SmmDashboardScreen() {
         )}
       </View>
     </ScrollView>
+    </>
   )
 }
 
@@ -99,6 +140,37 @@ const styles = StyleSheet.create({
     gap: spacing.xl,
   },
   heading: { ...typography.h1, color: colors.text.primary },
+
+  // mode switch
+  modeSwitch: {
+    flexDirection: 'row',
+    backgroundColor: colors.input,
+    borderRadius: radius.lg,
+    padding: 3,
+  },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    alignItems: 'center',
+    borderRadius: radius.md,
+  },
+  modeBtnActive: {
+    backgroundColor: colors.background,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  modeBtnLabel: {
+    ...typography.smallMedium,
+    color: colors.text.muted,
+  },
+  modeBtnLabelActive: {
+    color: colors.primary,
+    fontWeight: '700',
+  },
+
   section: { gap: spacing.md },
   sectionTitle: { ...typography.h3, color: colors.text.primary },
   list: { gap: spacing.sm },

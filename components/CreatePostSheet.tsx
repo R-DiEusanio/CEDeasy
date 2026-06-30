@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -29,13 +29,18 @@ const POST_TYPES: PostType[] = ['Post', 'Reel', 'Carosello', 'Story']
 interface CreatePostSheetProps {
   sheetRef: React.RefObject<BottomSheetModal>
   brandId: string
+  defaultDate?: Date
 }
 
-export function CreatePostSheet({ sheetRef, brandId }: CreatePostSheetProps) {
+export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSheetProps) {
   const { mutateAsync: createPost } = useCreatePost()
   const [postType, setPostType] = useState<PostType>('Post')
-  const [date, setDate] = useState(new Date())
+  const [date, setDate] = useState(defaultDate ?? new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
+
+  useEffect(() => {
+    if (defaultDate) setDate(defaultDate)
+  }, [defaultDate])
   const [showTimePicker, setShowTimePicker] = useState(false)
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({

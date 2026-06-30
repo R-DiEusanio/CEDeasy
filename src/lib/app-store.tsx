@@ -6,14 +6,20 @@ import {
   useState,
   type ReactNode,
 } from 'react'
+import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from './supabase'
 import { getMyProfile } from './supabase/profiles'
 
 export type Role = 'smm' | 'client'
+export type SmmMode = 'consulenza' | 'gestione'
+
+const SMM_MODE_KEY = '@cedeasy/smm_mode'
 
 interface AppState {
   role: Role
   setRole: (r: Role) => void
+  smmMode: SmmMode
+  setSmmMode: (m: SmmMode) => void
   activeBrandId: string | null
   setActiveBrandId: (id: string | null) => void
   userId: string | null
@@ -24,9 +30,21 @@ const Ctx = createContext<AppState | null>(null)
 
 export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('smm')
+  const [smmMode, _setSmmMode] = useState<SmmMode>('consulenza')
   const [activeBrandId, setActiveBrandId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
+
+  useEffect(() => {
+    AsyncStorage.getItem(SMM_MODE_KEY).then((val) => {
+      if (val === 'consulenza' || val === 'gestione') _setSmmMode(val)
+    })
+  }, [])
+
+  const setSmmMode = (m: SmmMode) => {
+    _setSmmMode(m)
+    AsyncStorage.setItem(SMM_MODE_KEY, m)
+  }
 
   useEffect(() => {
     supabase.auth.getSession().then(async ({ data }) => {
@@ -65,8 +83,8 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AppState>(
-    () => ({ role, setRole, activeBrandId, setActiveBrandId, userId, isReady }),
-    [role, activeBrandId, userId, isReady]
+    () => ({ role, setRole, smmMode, setSmmMode, activeBrandId, setActiveBrandId, userId, isReady }),
+    [role, smmMode, activeBrandId, userId, isReady]
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
