@@ -1,4 +1,4 @@
-# Piano d'azione — CEDeasy (Lato SMM)
+# Piano d'azione — CEDeasy
 
 ## Task 1 — Selezione modalità operativa
 

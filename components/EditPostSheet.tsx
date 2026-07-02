@@ -10,8 +10,8 @@ import { Sheet } from './ui/BottomSheet'
 import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
 import { Button } from './ui/Button'
-import { useCreatePost } from '../src/lib/queries'
-import type { PostType } from '../src/lib/mock-data'
+import { useUpdatePost } from '../src/lib/queries'
+import type { Post, PostType } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -26,26 +26,35 @@ type FormData = z.infer<typeof schema>
 
 const POST_TYPES: PostType[] = ['Post', 'Reel', 'Carosello', 'Story']
 
-interface CreatePostSheetProps {
+interface EditPostSheetProps {
   sheetRef: React.RefObject<BottomSheetModal>
-  brandId: string
-  defaultDate?: Date
+  post: Post | null
+  onSaved?: () => void
 }
 
-export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSheetProps) {
-  const { mutateAsync: createPost } = useCreatePost()
+export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
+  const { mutateAsync: updatePost } = useUpdatePost()
   const [postType, setPostType] = useState<PostType>('Post')
-  const [date, setDate] = useState(defaultDate ?? new Date())
+  const [date, setDate] = useState(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
-
-  useEffect(() => {
-    if (defaultDate) setDate(defaultDate)
-  }, [defaultDate])
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: { title: '', caption: '', mediaLink: '', internalNotes: '' },
   })
+
+  // Pre-compila i campi quando il post cambia
+  useEffect(() => {
+    if (!post) return
+    setPostType(post.type)
+    setDate(new Date(post.date))
+    reset({
+      title:         post.title,
+      caption:       post.caption ?? '',
+      mediaLink:     post.mediaLink ?? '',
+      internalNotes: post.internalNotes ?? '',
+    })
+  }, [post?.id])
 
   const pad = (n: number) => n.toString().padStart(2, '0')
   const isoDate = () => {
@@ -53,29 +62,41 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
     return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T00:00:00`
   }
 
+  if (!post) return null
+
   const onSubmit = async (data: FormData) => {
     try {
-      await createPost({
-        brandId,
-        title:         data.title,
-        caption:       data.caption ?? '',
-        type:          postType,
-        date:          isoDate(),
-        status:        'draft',
-        mediaLink:     data.mediaLink || undefined,
-        internalNotes: data.internalNotes || undefined,
+      await updatePost({
+        id:  post.id,
+        dto: {
+          title:         data.title,
+          caption:       data.caption ?? '',
+          type:          postType,
+          date:          isoDate(),
+          mediaLink:     data.mediaLink || undefined,
+          internalNotes: data.internalNotes || undefined,
+        },
       })
-      Toast.show({ type: 'success', text1: 'Post creato!' })
-      reset()
+      Toast.show({ type: 'success', text1: 'Post aggiornato!' })
       sheetRef.current?.dismiss()
+      onSaved?.()
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
     }
   }
 
   return (
-    <Sheet ref={sheetRef} title="Nuovo post" snapPoints={['95%']} scrollable>
+    <Sheet ref={sheetRef} title="Modifica post" snapPoints={['95%']} scrollable>
       <View style={styles.form}>
+
+        {/* Feedback cliente in evidenza */}
+        {!!post.feedback && (
+          <View style={styles.feedbackBox}>
+            <Text style={styles.feedbackLabel}>Feedback cliente</Text>
+            <Text style={styles.feedbackText}>{post.feedback}</Text>
+          </View>
+        )}
+
         {/* Tipo */}
         <View style={styles.field}>
           <Text style={styles.fieldLabel}>Tipo</Text>
@@ -182,7 +203,7 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
         />
 
         <Button
-          label="Crea post"
+          label="Salva modifiche"
           onPress={handleSubmit(onSubmit)}
           loading={isSubmitting}
           fullWidth
@@ -194,6 +215,16 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
 
 const styles = StyleSheet.create({
   form: { padding: spacing.lg, gap: spacing.lg },
+  feedbackBox: {
+    backgroundColor: colors.status.changes.bg,
+    padding: spacing.md,
+    borderRadius: 10,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.status.changes.dot,
+    gap: 4,
+  },
+  feedbackLabel: { ...typography.label, color: colors.status.changes.text },
+  feedbackText:  { ...typography.body, color: colors.status.changes.text },
   field: { gap: spacing.xs },
   fieldLabel: { ...typography.label, color: colors.text.secondary },
   typeRow: { flexDirection: 'row', gap: spacing.sm },

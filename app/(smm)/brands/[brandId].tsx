@@ -1,7 +1,8 @@
-import { useMemo, useRef, useState } from 'react'
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { useMemo, useEffect, useRef, useState } from 'react'
+import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
-import { ArrowLeft, CalendarDays, Plus } from 'lucide-react-native'
+import { ArrowLeft, CalendarDays, Copy, Plus } from 'lucide-react-native'
+import Toast from 'react-native-toast-message'
 import type { BottomSheetModal } from '../../../components/ui/BottomSheet'
 import { usePosts, useBrands } from '../../../src/lib/queries'
 import { useAppStore } from '../../../src/lib/app-store'
@@ -17,7 +18,7 @@ import { spacing } from '../../../constants/spacing'
 import { typography } from '../../../constants/typography'
 
 export default function BrandDetailScreen() {
-  const { brandId } = useLocalSearchParams<{ brandId: string }>()
+  const { brandId, openPostId } = useLocalSearchParams<{ brandId: string; openPostId?: string }>()
   const { userId } = useAppStore()
   const { data: brands } = useBrands(userId)
   const { data: posts, isLoading, refetch } = usePosts(brandId)
@@ -27,6 +28,28 @@ export default function BrandDetailScreen() {
   const detailSheetRef = useRef<BottomSheetModal>(null)
 
   const brand = brands?.find((b) => b.id === brandId)
+
+  const openedRef = useRef(false)
+  useEffect(() => {
+    if (!openPostId || !posts || openedRef.current) return
+    const post = posts.find((p) => p.id === openPostId)
+    if (post) {
+      openedRef.current = true
+      setSelectedPost(post)
+      setTimeout(() => detailSheetRef.current?.present(), 300)
+    }
+  }, [openPostId, posts])
+
+  const copyCode = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        await navigator.clipboard.writeText(brandId)
+      }
+      Toast.show({ type: 'success', text1: 'Codice copiato!', text2: 'Invialo al cliente per la registrazione' })
+    } catch {
+      Toast.show({ type: 'error', text1: 'Copia non riuscita' })
+    }
+  }
 
   const openPost = (post: Post) => {
     setSelectedPost(post)
@@ -63,6 +86,12 @@ export default function BrandDetailScreen() {
         }
         ListHeaderComponent={
           <>
+            {/* Codice Cliente */}
+            <Pressable style={styles.codeCard} onPress={copyCode}>
+              <Copy size={15} color={colors.primary} />
+              <Text style={styles.copyLabel}>Copia codice cliente</Text>
+            </Pressable>
+
             <ContentGrid
               posts={posts ?? []}
               brandId={brandId}
@@ -141,6 +170,22 @@ const styles = StyleSheet.create({
   sectionTitle: { ...typography.h3, color: colors.text.primary },
   postItem: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
   skeletons: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  codeCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    marginBottom: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: colors.primary + '10',
+    borderWidth: 1,
+    borderColor: colors.primary + '30',
+    borderRadius: 20,
+    gap: 6,
+  },
+  copyLabel: { ...typography.small, color: colors.primary, fontWeight: '600' },
   fab: {
     position: 'absolute',
     bottom: 32,

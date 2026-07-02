@@ -11,7 +11,6 @@ import { Sheet } from './ui/BottomSheet'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { Textarea } from './ui/Textarea'
-import { CommentsThread } from './CommentsThread'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -73,7 +72,7 @@ export function ClientPostDetailSheet({ sheetRef, post }: ClientPostDetailSheetP
     <Sheet
       ref={sheetRef}
       title={post.title}
-      snapPoints={['60%', '95%']}
+      snapPoints={['45%']}
       scrollable
       onClose={resetState}
     >
@@ -107,11 +106,6 @@ export function ClientPostDetailSheet({ sheetRef, post }: ClientPostDetailSheetP
             </Pressable>
           </View>
         )}
-
-        {/* Commenti */}
-        <View style={styles.commentsSection}>
-          <CommentsThread postId={post.id} />
-        </View>
 
         {/* Azioni cliente */}
         {visualStatus === 'pending' && (
@@ -173,11 +167,6 @@ const styles = StyleSheet.create({
   body: { ...typography.body, color: colors.text.primary, lineHeight: 22 },
   linkRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
   link: { ...typography.small, color: colors.primary, flex: 1 },
-  commentsSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.lg,
-  },
   actions: {
     gap: spacing.sm,
     borderTopWidth: 1,

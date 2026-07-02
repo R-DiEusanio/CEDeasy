@@ -18,6 +18,7 @@ type DbPost = {
   feedback: string | null;
   created_at: string | null;
   updated_at: string | null;
+  last_updated_by: string | null;
   brands?: { name: string } | null;
 };
 
@@ -110,15 +111,270 @@ export async function getPosts(brandId: string): Promise<Post[]> {
   return (data as DbPost[]).map(toPost);
 }
 
-// Vista cliente: RLS esclude già PENDING e DRAFT — nessun filtro manuale necessario
+// Vista cliente: filtra per brand_id del cliente loggato
 export async function getClientPosts(): Promise<Post[]> {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Utente non autenticato");
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("brand_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile?.brand_id) throw new Error("Brand non trovato per questo cliente");
+
   const { data, error } = await supabase
     .from("posts")
     .select("*")
+    .eq("brand_id", profile.brand_id)
     .order("scheduled_date", { ascending: true });
 
   if (error) throw new Error(error.message);
   return (data as DbPost[]).map(toPost);
+}
+
+// Statistiche dashboard cliente
+export interface ClientStats {
+  brandName: string;
+  total: number;
+  pending: number;          // REVISION_REQUESTED — in approvazione
+  changesRequested: number; // CHANGES_REQUESTED  — modifica richiesta
+  approved: number;         // APPROVED + PUBLISHED
+  month: string;            // "Luglio 2026"
+}
+
+export async function getClientStats(): Promise<ClientStats> {
+  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  if (authError || !user) throw new Error("Utente non autenticato");
+
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("brand_id")
+    .eq("id", user.id)
+    .single();
+
+  if (profileError || !profile?.brand_id) throw new Error("Brand non trovato");
+
+  const [{ data: brandData }, { data: postsData }] = await Promise.all([
+    supabase.from("brands").select("name").eq("id", profile.brand_id).single(),
+    supabase.from("posts").select("status").eq("brand_id", profile.brand_id),
+  ]);
+
+  const rows = (postsData ?? []) as { status: string }[];
+  const now = new Date();
+  const month = now.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+
+  return {
+    brandName:        (brandData as any)?.name ?? "",
+    total:            rows.length,
+    pending:          rows.filter((r) => r.status === "REVISION_REQUESTED").length,
+    changesRequested: rows.filter((r) => r.status === "CHANGES_REQUESTED").length,
+    approved:         rows.filter((r) => r.status === "APPROVED" || r.status === "PUBLISHED").length,
+    month:            month.charAt(0).toUpperCase() + month.slice(1),
+  };
+}
+
+// KPI avanzati dashboard cliente
+export interface ClientKPIs {
+  avgApprovalDays: number | null;
+  firstPassRate: number;
+  feedbackRate: number;
+  qualityColor: 'green' | 'yellow' | 'red';
+  qualityLabel: string;
+  monthlyChart: { month: string; short: string; count: number }[];
+}
+
+export async function getClientKPIs(): Promise<ClientKPIs> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Utente non autenticato");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("brand_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.brand_id) throw new Error("Brand non trovato");
+
+  const { data } = await supabase
+    .from("posts")
+    .select("status, feedback, created_at, updated_at, scheduled_date")
+    .eq("brand_id", profile.brand_id);
+
+  const rows = (data ?? []) as {
+    status: string;
+    feedback: string | null;
+    created_at: string | null;
+    updated_at: string | null;
+    scheduled_date: string;
+  }[];
+
+  // Tempo medio approvazione (giorni)
+  const approvedRows = rows.filter((r) => r.status === "APPROVED" || r.status === "PUBLISHED");
+  let avgApprovalDays: number | null = null;
+  if (approvedRows.length > 0) {
+    const diffs = approvedRows
+      .filter((r) => r.created_at && r.updated_at)
+      .map((r) => (new Date(r.updated_at!).getTime() - new Date(r.created_at!).getTime()) / 86400000);
+    if (diffs.length > 0) avgApprovalDays = Math.round(diffs.reduce((a, b) => a + b, 0) / diffs.length);
+  }
+
+  // Tasso approvazione al primo invio (senza feedback)
+  const approvedNoFeedback = approvedRows.filter((r) => !r.feedback).length;
+  const firstPassRate = approvedRows.length > 0
+    ? Math.round((approvedNoFeedback / approvedRows.length) * 100)
+    : 0;
+
+  // Tasso feedback (qualità SMM)
+  const withFeedback = rows.filter((r) => r.feedback).length;
+  const feedbackRate = rows.length > 0 ? Math.round((withFeedback / rows.length) * 100) : 0;
+
+  const qualityColor: ClientKPIs['qualityColor'] =
+    feedbackRate <= 20 ? 'green' : feedbackRate <= 40 ? 'yellow' : 'red'
+  const qualityLabel =
+    qualityColor === 'green' ? 'Ottimo' : qualityColor === 'yellow' ? 'Migliorabile' : 'Critico'
+
+  // Grafico ultimi 6 mesi (per scheduled_date)
+  const now = new Date();
+  const monthlyChart: ClientKPIs['monthlyChart'] = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 5 + i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const count = rows.filter((r) => {
+      const rd = new Date(r.scheduled_date);
+      return rd.getFullYear() === y && rd.getMonth() === m;
+    }).length;
+    return {
+      month: d.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' }),
+      short: d.toLocaleDateString('it-IT', { month: 'short' }),
+      count,
+    };
+  });
+
+  return { avgApprovalDays, firstPassRate, feedbackRate, qualityColor, qualityLabel, monthlyChart };
+}
+
+// ─── Storico e confronto periodi ─────────────────────────────────────────────
+
+export interface MonthSummary {
+  label: string;
+  short: string;
+  year: number;
+  monthIndex: number;
+  total: number;
+  approved: number;
+  approvalRate: number;
+  withFeedback: number;
+  feedbackRate: number;
+}
+
+export interface ComparisonBlock {
+  label: string;
+  total: number;
+  approved: number;
+  approvalRate: number;
+  feedbackRate: number;
+}
+
+export interface ClientComparison {
+  mom: { current: ComparisonBlock; previous: ComparisonBlock };
+  qoq: { current: ComparisonBlock; previous: ComparisonBlock };
+  monthlyHistory: MonthSummary[]; // 6 mesi, più recente per primo
+}
+
+export async function getClientComparison(): Promise<ClientComparison> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error("Utente non autenticato");
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("brand_id")
+    .eq("id", user.id)
+    .single();
+
+  if (!profile?.brand_id) throw new Error("Brand non trovato");
+
+  const { data } = await supabase
+    .from("posts")
+    .select("status, feedback, scheduled_date")
+    .eq("brand_id", profile.brand_id);
+
+  const rows = (data ?? []) as { status: string; feedback: string | null; scheduled_date: string }[];
+
+  const now = new Date();
+
+  // 7 mesi di bucket (indice 0 = 6 mesi fa, indice 6 = mese corrente)
+  const months: MonthSummary[] = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(now.getFullYear(), now.getMonth() - 6 + i, 1);
+    const y = d.getFullYear();
+    const m = d.getMonth();
+    const monthRows = rows.filter((r) => {
+      const rd = new Date(r.scheduled_date);
+      return rd.getFullYear() === y && rd.getMonth() === m;
+    });
+    const total = monthRows.length;
+    const approved = monthRows.filter((r) => r.status === "APPROVED" || r.status === "PUBLISHED").length;
+    const withFeedback = monthRows.filter((r) => r.feedback).length;
+    const lbl = d.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
+    return {
+      label: lbl.charAt(0).toUpperCase() + lbl.slice(1),
+      short: d.toLocaleDateString("it-IT", { month: "short" }),
+      year: y,
+      monthIndex: m,
+      total,
+      approved,
+      approvalRate: total > 0 ? Math.round((approved / total) * 100) : 0,
+      withFeedback,
+      feedbackRate: total > 0 ? Math.round((withFeedback / total) * 100) : 0,
+    };
+  });
+
+  const toBlock = (m: MonthSummary): ComparisonBlock => ({
+    label: m.label,
+    total: m.total,
+    approved: m.approved,
+    approvalRate: m.approvalRate,
+    feedbackRate: m.feedbackRate,
+  });
+
+  const sumMonths = (ms: MonthSummary[]): ComparisonBlock => {
+    const total       = ms.reduce((a, x) => a + x.total, 0);
+    const approved    = ms.reduce((a, x) => a + x.approved, 0);
+    const withFeedback = ms.reduce((a, x) => a + x.withFeedback, 0);
+    const qi = ms.length > 0 ? Math.floor(ms[0].monthIndex / 3) + 1 : 0;
+    return {
+      label:        ms.length > 0 ? `Q${qi} ${ms[0].year}` : "—",
+      total,
+      approved,
+      approvalRate: total > 0 ? Math.round((approved / total) * 100) : 0,
+      feedbackRate: total > 0 ? Math.round((withFeedback / total) * 100) : 0,
+    };
+  };
+
+  // MoM: mese corrente vs precedente
+  const mom = { current: toBlock(months[6]), previous: toBlock(months[5]) };
+
+  // QoQ: trimestre corrente vs precedente (dai 7 mesi disponibili)
+  const curQStart = Math.floor(now.getMonth() / 3) * 3;
+  const curY      = now.getFullYear();
+  let   prevQStart = curQStart - 3;
+  let   prevY     = curY;
+  if (prevQStart < 0) { prevQStart += 12; prevY -= 1; }
+
+  const inQ = (m: MonthSummary, qs: number, y: number) =>
+    m.year === y && [qs, qs + 1, qs + 2].includes(m.monthIndex);
+
+  const qoq = {
+    current:  sumMonths(months.filter((m) => inQ(m, curQStart,  curY))),
+    previous: sumMonths(months.filter((m) => inQ(m, prevQStart, prevY))),
+  };
+
+  return {
+    mom,
+    qoq,
+    monthlyHistory: months.slice(1).reverse(), // 6 mesi, più recente prima
+  };
 }
 
 // Feed recente SMM: RLS garantisce già che l'SMM veda solo i propri brand
@@ -136,7 +392,8 @@ export async function getRecentPosts(): Promise<Post[]> {
 // ─── Activity Feed ────────────────────────────────────────────────────────────
 
 export interface Activity {
-  id: string;
+  id: string;       // post id
+  brandId: string;
   type: "new_post" | "approved" | "revision_requested";
   message: string;
   time: string;
@@ -159,24 +416,37 @@ function formatTimeAgo(date: Date): string {
   return `${Math.floor(diffDays / 7)} settimane fa`;
 }
 
-function toActivity(row: DbPost): Activity {
+function toActivity(row: DbPost, currentUserId: string | null): Activity {
   const timestamp = new Date(row.updated_at || row.created_at || new Date());
+  const actionByMe = row.last_updated_by === currentUserId;
+
+  const createdAt = row.created_at ? new Date(row.created_at).getTime() : 0;
+  const updatedAt = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+  const isEdit = updatedAt - createdAt > 60_000; // più di 1 minuto → è una modifica
+
   let type: Activity["type"] = "new_post";
-  let message = `SMM ha caricato un nuovo ${row.platform}`;
+  let message = isEdit
+    ? `Hai modificato il post "${row.title}"`
+    : `Hai caricato un nuovo ${row.platform}`;
 
   if (row.status === "APPROVED" || row.status === "PUBLISHED") {
     type = "approved";
-    message = `Hai approvato "${row.title}"`;
+    message = actionByMe
+      ? `Hai approvato "${row.title}"`
+      : `Il cliente ha approvato "${row.title}"`;
   } else if (row.status === "CHANGES_REQUESTED") {
     type = "revision_requested";
-    message = `Modifica inviata per "${row.title}"`;
+    message = actionByMe
+      ? `Modifica inviata per "${row.title}"`
+      : `Il cliente ha richiesto modifiche su "${row.title}"`;
   }
 
   return {
-    id: row.id,
+    id:        row.id,
+    brandId:   row.brand_id,
     type,
     message,
-    time: formatTimeAgo(timestamp),
+    time:      formatTimeAgo(timestamp),
     timestamp,
     brandName: row.brands?.name ?? undefined,
   };
@@ -187,6 +457,8 @@ export async function getRecentActivities(): Promise<Activity[]> {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data, error } = await supabase
     .from("posts")
     .select("*, brands(name)")
@@ -195,7 +467,7 @@ export async function getRecentActivities(): Promise<Activity[]> {
     .limit(6);
 
   if (error) throw new Error(error.message);
-  return (data as DbPost[]).map(toActivity);
+  return (data as DbPost[]).map((row) => toActivity(row, user?.id ?? null));
 }
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
@@ -267,12 +539,15 @@ export async function updatePostStatus(
 ): Promise<void> {
   const dbStatus = FRONTEND_STATUS_TO_DB[frontendStatus] ?? frontendStatus.toUpperCase();
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { error } = await supabase
     .from("posts")
     .update({
-      status:     dbStatus,
-      feedback:   feedback ?? null,
-      updated_at: new Date().toISOString(),
+      status:           dbStatus,
+      feedback:         feedback ?? null,
+      updated_at:       new Date().toISOString(),
+      last_updated_by:  user?.id ?? null,
     })
     .eq("id", id);
 

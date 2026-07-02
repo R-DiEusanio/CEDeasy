@@ -1,4 +1,4 @@
-import { Alert, StyleSheet, Text, View } from 'react-native'
+import { Alert, Platform, StyleSheet, Text, View } from 'react-native'
 import { LogOut, User } from 'lucide-react-native'
 import { supabase } from '../../src/lib/supabase'
 import { useMyProfile } from '../../src/lib/queries'
@@ -15,18 +15,21 @@ export default function SmmProfileScreen() {
   const { data: profile, isLoading } = useMyProfile()
   const { setRole, setActiveBrandId } = useAppStore()
 
+  const doLogout = async () => {
+    await supabase.auth.signOut()
+    setRole('smm')
+    setActiveBrandId(null)
+  }
+
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      // window.confirm è bloccato in alcuni browser embedded — esci direttamente
+      doLogout()
+      return
+    }
     Alert.alert('Esci', 'Sei sicuro di voler uscire?', [
       { text: 'Annulla', style: 'cancel' },
-      {
-        text: 'Esci',
-        style: 'destructive',
-        onPress: async () => {
-          await supabase.auth.signOut()
-          setRole('smm')
-          setActiveBrandId(null)
-        },
-      },
+      { text: 'Esci', style: 'destructive', onPress: doLogout },
     ])
   }
 

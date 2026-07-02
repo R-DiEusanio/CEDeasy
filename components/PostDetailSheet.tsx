@@ -1,4 +1,5 @@
-import { Alert, Linking, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useRef } from 'react'
+import { Alert, Linking, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { ExternalLink, Trash2 } from 'lucide-react-native'
 import * as Haptics from 'expo-haptics'
 import Toast from 'react-native-toast-message'
@@ -9,7 +10,7 @@ import { useUpdatePostStatus, useDeletePost } from '../src/lib/queries'
 import { Sheet } from './ui/BottomSheet'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
-import { CommentsThread } from './CommentsThread'
+import { EditPostSheet } from './EditPostSheet'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -23,12 +24,14 @@ interface PostDetailSheetProps {
 export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
   const { mutateAsync: updateStatus, isPending: updatingStatus } = useUpdatePostStatus()
   const { mutateAsync: deletePost, isPending: deleting } = useDeletePost()
+  const editSheetRef = useRef<BottomSheetModal>(null)
 
   if (!post) return null
 
   const visualStatus = getVisualStatus(post.status, post.hasChangesRequested)
   const canSend    = visualStatus === 'draft' || visualStatus === 'changes_requested'
   const canReset   = visualStatus === 'pending'
+  const canEdit    = visualStatus === 'draft' || visualStatus === 'changes_requested'
 
   const handleSendToClient = async () => {
     try {
@@ -51,31 +54,34 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
     }
   }
 
+  const doDelete = async () => {
+    try {
+      await deletePost({ id: post.id, brandId: post.brandId })
+      Toast.show({ type: 'success', text1: 'Post eliminato' })
+      sheetRef.current?.dismiss()
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
+    }
+  }
+
   const handleDelete = () => {
+    if (Platform.OS === 'web') {
+      doDelete()
+      return
+    }
     Alert.alert(
       'Elimina post',
       `Vuoi eliminare "${post.title}"? Questa azione non è reversibile.`,
       [
         { text: 'Annulla', style: 'cancel' },
-        {
-          text: 'Elimina',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deletePost({ id: post.id, brandId: post.brandId })
-              Toast.show({ type: 'success', text1: 'Post eliminato' })
-              sheetRef.current?.dismiss()
-            } catch (e: any) {
-              Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
-            }
-          },
-        },
+        { text: 'Elimina', style: 'destructive', onPress: doDelete },
       ]
     )
   }
 
   return (
-    <Sheet ref={sheetRef} title={post.title} snapPoints={['60%', '95%']} scrollable>
+    <>
+    <Sheet ref={sheetRef} title={post.title} snapPoints={['45%']} scrollable>
       <View style={styles.content}>
         {/* Status + data */}
         <View style={styles.metaRow}>
@@ -127,13 +133,16 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
           </View>
         )}
 
-        {/* Commenti */}
-        <View style={styles.commentsSection}>
-          <CommentsThread postId={post.id} />
-        </View>
-
         {/* Azioni SMM */}
         <View style={styles.actions}>
+          {canEdit && (
+            <Button
+              label="Modifica post"
+              onPress={() => editSheetRef.current?.present()}
+              variant="secondary"
+              fullWidth
+            />
+          )}
           {canSend && (
             <Button
               label="Invia al cliente"
@@ -158,6 +167,13 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
         </View>
       </View>
     </Sheet>
+
+    <EditPostSheet
+      sheetRef={editSheetRef}
+      post={post}
+      onSaved={() => sheetRef.current?.dismiss()}
+    />
+    </>
   )
 }
 
@@ -180,11 +196,6 @@ const styles = StyleSheet.create({
     borderRadius: radius.md,
     borderLeftWidth: 3,
     borderLeftColor: colors.status.changes.dot,
-  },
-  commentsSection: {
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: spacing.lg,
   },
   actions: {
     gap: spacing.sm,

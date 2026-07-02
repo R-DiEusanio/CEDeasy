@@ -50,7 +50,7 @@ export default function RegisterScreen() {
 
   const onSubmit = async (data: FormData) => {
     if (role === 'CLIENT' && !data.brandId?.trim()) {
-      Toast.show({ type: 'error', text1: 'Brand ID mancante', text2: 'Inserisci il Brand ID fornito dal tuo SMM' })
+      Toast.show({ type: 'error', text1: 'Codice Cliente mancante', text2: 'Inserisci il Codice Cliente fornito dal tuo SMM' })
       return
     }
 
@@ -177,7 +177,7 @@ export default function RegisterScreen() {
               name="brandId"
               render={({ field: { onChange, onBlur, value } }) => (
                 <Input
-                  label="Brand ID"
+                  label="Codice Cliente"
                   placeholder="Fornito dal tuo Social Media Manager"
                   autoCapitalize="none"
                   onChangeText={onChange}

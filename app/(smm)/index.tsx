@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ScrollView, RefreshControl, StyleSheet, Text, View, Pressable } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useRouter } from 'expo-router'
 import { Activity as ActivityIcon, Bell } from 'lucide-react-native'
 import { useRecentActivities, useRecentPosts } from '../../src/lib/queries'
 import { useAppStore } from '../../src/lib/app-store'
@@ -21,6 +22,7 @@ const MODES: { value: SmmMode; label: string }[] = [
 
 export default function SmmDashboardScreen() {
   const { userId, smmMode, setSmmMode } = useAppStore()
+  const router = useRouter()
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   useEffect(() => {
@@ -98,7 +100,11 @@ export default function SmmDashboardScreen() {
         ) : (
           <View style={styles.list}>
             {activities.map((a) => (
-              <ActivityCard key={a.id} activity={a} />
+              <ActivityCard
+                key={a.id}
+                activity={a}
+                onPress={() => router.push(`/(smm)/brands/${a.brandId}?openPostId=${a.id}`)}
+              />
             ))}
           </View>
         )}

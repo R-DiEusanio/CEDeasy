@@ -39,13 +39,13 @@ export default function ClientPendingScreen() {
 
   const handleLogout = () => {
     if (Platform.OS === 'web') {
-      if (window.confirm('Sei sicuro di voler uscire?')) doLogout()
-    } else {
-      Alert.alert('Esci', 'Sei sicuro di voler uscire?', [
-        { text: 'Annulla', style: 'cancel' },
-        { text: 'Esci', style: 'destructive', onPress: doLogout },
-      ])
+      doLogout()
+      return
     }
+    Alert.alert('Esci', 'Sei sicuro di voler uscire?', [
+      { text: 'Annulla', style: 'cancel' },
+      { text: 'Esci', style: 'destructive', onPress: doLogout },
+    ])
   }
 
   const openPost = (post: Post) => {

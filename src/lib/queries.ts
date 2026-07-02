@@ -5,11 +5,12 @@ import { getMyProfile, upsertProfile }                    from "./supabase/profi
 import { getBrands, createBrand, updateBrand, deleteBrand } from "./supabase/brands";
 import {
   getPosts, getClientPosts, getRecentPosts, getRecentActivities,
+  getClientStats, getClientKPIs, getClientComparison,
   createPost, updatePost, deletePost, updatePostStatus,
 } from "./supabase/posts";
 import { getComments, addComment } from "./supabase/comments";
 import type { Comment } from "./supabase/comments";
-import type { Activity } from "./supabase/posts";
+import type { Activity, ClientStats, ClientKPIs, ClientComparison } from "./supabase/posts";
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +97,30 @@ export function useClientPosts() {
   return useQuery<Post[]>({
     queryKey:       ["client", "posts"],
     queryFn:        getClientPosts,
+    refetchInterval: POST_POLL_MS,
+  });
+}
+
+export function useClientStats() {
+  return useQuery<ClientStats>({
+    queryKey:        ["client", "stats"],
+    queryFn:         getClientStats,
+    refetchInterval: POST_POLL_MS,
+  });
+}
+
+export function useClientKPIs() {
+  return useQuery<ClientKPIs>({
+    queryKey:        ["client", "kpis"],
+    queryFn:         getClientKPIs,
+    refetchInterval: POST_POLL_MS,
+  });
+}
+
+export function useClientComparison() {
+  return useQuery<ClientComparison>({
+    queryKey:        ["client", "comparison"],
+    queryFn:         getClientComparison,
     refetchInterval: POST_POLL_MS,
   });
 }
