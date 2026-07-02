@@ -18,6 +18,7 @@ type DbPost = {
   feedback: string | null;
   created_at: string | null;
   updated_at: string | null;
+  brands?: { name: string } | null;
 };
 
 // ─── Semaforo: mapping bidirezionale DB ↔ frontend ───────────────────────────
@@ -60,6 +61,7 @@ function toPost(row: DbPost): Post {
   return {
     id:                  row.id,
     brandId:             row.brand_id,
+    brandName:           row.brands?.name ?? undefined,
     title:               row.title,
     caption:             row.content ?? "",
     type:                (row.platform as Post["type"]) ?? "Post",
@@ -123,7 +125,7 @@ export async function getClientPosts(): Promise<Post[]> {
 export async function getRecentPosts(): Promise<Post[]> {
   const { data, error } = await supabase
     .from("posts")
-    .select("*")
+    .select("*, brands(name)")
     .order("updated_at", { ascending: false })
     .limit(6);
 
@@ -139,6 +141,7 @@ export interface Activity {
   message: string;
   time: string;
   timestamp: Date;
+  brandName?: string;
 }
 
 function formatTimeAgo(date: Date): string {
@@ -175,6 +178,7 @@ function toActivity(row: DbPost): Activity {
     message,
     time: formatTimeAgo(timestamp),
     timestamp,
+    brandName: row.brands?.name ?? undefined,
   };
 }
 
@@ -185,7 +189,7 @@ export async function getRecentActivities(): Promise<Activity[]> {
 
   const { data, error } = await supabase
     .from("posts")
-    .select("*")
+    .select("*, brands(name)")
     .gte("updated_at", sevenDaysAgo.toISOString())
     .order("updated_at", { ascending: false })
     .limit(6);

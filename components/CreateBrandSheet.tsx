@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { StyleSheet, Text, View, Pressable } from 'react-native'
+import { StyleSheet, Text, View, Pressable, Modal } from 'react-native'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ChevronDown, ChevronUp } from 'lucide-react-native'
+import { ChevronDown, ChevronUp, X } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 import type { BottomSheetModal } from './ui/BottomSheet'
 import { Sheet } from './ui/BottomSheet'
@@ -14,6 +14,9 @@ import { useAppStore } from '../src/lib/app-store'
 import { colors } from '../constants/colors'
 import { spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
+
+const CATEGORIES = ['Ristorazione', 'Benessere', 'Abbigliamento', 'Fitness', 'Tecnologia']
+const EXTRA_CATEGORIES = ['Finanza']
 
 const schema = z.object({
   name:     z.string().min(1, 'Nome obbligatorio'),
@@ -37,6 +40,7 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
   const { userId } = useAppStore()
   const { mutateAsync: createBrand } = useCreateBrand()
   const [showSocial, setShowSocial] = useState(false)
+  const [showExtraModal, setShowExtraModal] = useState(false)
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -74,11 +78,73 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
             <Input label="Nome brand *" placeholder="Es. Pizzeria Da Mario"
               onChangeText={onChange} onBlur={onBlur} value={value} error={errors.name?.message} />
           )} />
+
         <Controller control={control} name="category"
           render={({ field: { onChange, onBlur, value } }) => (
-            <Input label="Categoria" placeholder="Es. Ristorazione"
-              onChangeText={onChange} onBlur={onBlur} value={value ?? ''} />
+            <View style={styles.categoryGroup}>
+              <Input label="Categoria" placeholder="Es. Ristorazione"
+                onChangeText={onChange} onBlur={onBlur} value={value ?? ''} />
+              <View style={styles.chips}>
+                {CATEGORIES.map((cat) => {
+                  const active = value === cat
+                  return (
+                    <Pressable
+                      key={cat}
+                      style={[styles.chip, active && styles.chipActive]}
+                      onPress={() => onChange(active ? '' : cat)}
+                    >
+                      <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{cat}</Text>
+                    </Pressable>
+                  )
+                })}
+                <Pressable
+                  style={[styles.chip, EXTRA_CATEGORIES.includes(value ?? '') && styles.chipActive]}
+                  onPress={() => setShowExtraModal(true)}
+                >
+                  <Text style={[styles.chipLabel, EXTRA_CATEGORIES.includes(value ?? '') && styles.chipLabelActive]}>
+                    Altro
+                  </Text>
+                </Pressable>
+              </View>
+
+              {/* Overlay extra categorie */}
+              <Modal
+                visible={showExtraModal}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setShowExtraModal(false)}
+              >
+                <Pressable style={styles.overlay} onPress={() => setShowExtraModal(false)}>
+                  <Pressable style={styles.extraBox} onPress={(e) => e.stopPropagation()}>
+                    <View style={styles.extraHeader}>
+                      <Text style={styles.extraTitle}>Altre categorie</Text>
+                      <Pressable onPress={() => setShowExtraModal(false)}>
+                        <X size={18} color={colors.text.secondary} />
+                      </Pressable>
+                    </View>
+                    <View style={styles.chips}>
+                      {EXTRA_CATEGORIES.map((cat) => {
+                        const active = value === cat
+                        return (
+                          <Pressable
+                            key={cat}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => {
+                              onChange(active ? '' : cat)
+                              setShowExtraModal(false)
+                            }}
+                          >
+                            <Text style={[styles.chipLabel, active && styles.chipLabelActive]}>{cat}</Text>
+                          </Pressable>
+                        )
+                      })}
+                    </View>
+                  </Pressable>
+                </Pressable>
+              </Modal>
+            </View>
           )} />
+
         <Controller control={control} name="ownerName"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input label="Nome proprietario" placeholder="Es. Mario Rossi"
@@ -135,4 +201,47 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
   },
   socialLabel: { ...typography.label, color: colors.text.secondary },
+  categoryGroup: { gap: spacing.sm },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  chip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.input,
+  },
+  chipActive: {
+    borderColor: colors.primary,
+    backgroundColor: colors.primary + '15',
+  },
+  chipLabel: { ...typography.small, color: colors.text.secondary },
+  chipLabelActive: { color: colors.primary, fontWeight: '600' },
+
+  // overlay extra categorie
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.xl,
+  },
+  extraBox: {
+    width: '100%',
+    backgroundColor: colors.background,
+    borderRadius: 16,
+    padding: spacing.lg,
+    gap: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  extraHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  extraTitle: { ...typography.h3, color: colors.text.primary },
 })

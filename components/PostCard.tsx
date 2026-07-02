@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { Image, Film, LayoutGrid, Zap } from 'lucide-react-native'
+import { Image, Film, LayoutGrid, Zap, User } from 'lucide-react-native'
 import type { Post } from '../src/lib/mock-data'
 import { getVisualStatus } from '../src/lib/status-config'
 import { Badge } from './ui/Badge'
@@ -36,6 +36,14 @@ export function PostCard({ post, onPress }: PostCardProps) {
           <Text style={styles.title} numberOfLines={1}>{post.title}</Text>
         </View>
 
+        {/* Cliente */}
+        {!!post.brandName && (
+          <View style={styles.clientRow}>
+            <User size={11} color={colors.text.muted} />
+            <Text style={styles.clientName}>{post.brandName}</Text>
+          </View>
+        )}
+
         {/* Caption preview */}
         {!!post.caption && (
           <Text style={styles.caption} numberOfLines={2}>{post.caption}</Text>
@@ -66,4 +74,6 @@ const styles = StyleSheet.create({
   caption: { ...typography.small, color: colors.text.secondary, lineHeight: 18 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   date: { ...typography.small, color: colors.text.muted },
+  clientRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  clientName: { ...typography.small, color: colors.text.muted, fontStyle: 'italic' },
 })

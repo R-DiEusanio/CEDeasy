@@ -6,6 +6,7 @@ export type PostType = "Post" | "Reel" | "Carosello" | "Story";
 export interface Post {
   id: string;
   brandId: string;
+  brandName?: string;
   title: string;
   caption: string;
   type: PostType;

@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { CheckCircle, AlertTriangle, FilePlus } from 'lucide-react-native'
+import { CheckCircle, AlertTriangle, FilePlus, User } from 'lucide-react-native'
 import type { Activity } from '../src/lib/supabase/posts'
 import { Card } from './ui/Card'
 import { colors } from '../constants/colors'
@@ -28,6 +28,12 @@ export function ActivityCard({ activity, onPress }: ActivityCardProps) {
         </View>
         <View style={styles.content}>
           <Text style={styles.message} numberOfLines={2}>{activity.message}</Text>
+          {!!activity.brandName && (
+            <View style={styles.clientRow}>
+              <User size={11} color={colors.text.muted} />
+              <Text style={styles.clientName}>{activity.brandName}</Text>
+            </View>
+          )}
           <Text style={styles.time}>{activity.time}</Text>
         </View>
       </Card>
@@ -47,5 +53,7 @@ const styles = StyleSheet.create({
   },
   content: { flex: 1, gap: 2 },
   message: { ...typography.bodyMedium, color: colors.text.primary },
+  clientRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  clientName: { ...typography.small, color: colors.text.muted, fontStyle: 'italic' },
   time: { ...typography.small, color: colors.text.muted },
 })

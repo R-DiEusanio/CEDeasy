@@ -64,6 +64,8 @@ const styles = StyleSheet.create({
     ...typography.body,
     color: colors.text.primary,
     padding: 0,
+    // @ts-ignore — web only
+    outlineStyle: 'none',
   },
   eyeBtn: { paddingLeft: spacing.sm },
   error: { ...typography.small, color: colors.destructive },
