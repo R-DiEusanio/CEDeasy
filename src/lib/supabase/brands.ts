@@ -68,6 +68,19 @@ export async function getBrands(): Promise<Brand[]> {
   return (data as DbBrand[]).map(toBrand);
 }
 
+// Usata dalla schermata profilo cliente per leggere il proprio brand collegato.
+// RLS (brands_client_read) deve permettere la SELECT dove id = profiles.brand_id dell'utente.
+export async function getBrandById(id: string): Promise<Brand> {
+  const { data, error } = await supabase
+    .from("brands")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (error) throw new Error(error.message);
+  return toBrand(data as DbBrand);
+}
+
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
 export async function createBrand(dto: Omit<Brand, "id">): Promise<Brand> {

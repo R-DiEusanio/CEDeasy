@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Brand, Post, ProfileDTO } from "./mock-data";
 
 import { getMyProfile, upsertProfile }                    from "./supabase/profiles";
-import { getBrands, createBrand, updateBrand, deleteBrand } from "./supabase/brands";
+import { getBrands, getBrandById, createBrand, updateBrand, deleteBrand } from "./supabase/brands";
 import {
   getPosts, getClientPosts, getRecentPosts, getRecentActivities,
   getClientStats, getClientKPIs, getClientComparison,
@@ -40,6 +40,14 @@ export function useBrands(smmId: string | null | undefined) {
     queryKey: ["brands"],
     queryFn:  getBrands,
     enabled:  !!smmId,
+  });
+}
+
+export function useBrand(brandId: string | null | undefined) {
+  return useQuery<Brand>({
+    queryKey: ["brands", brandId],
+    queryFn:  () => getBrandById(brandId as string),
+    enabled:  !!brandId,
   });
 }
 

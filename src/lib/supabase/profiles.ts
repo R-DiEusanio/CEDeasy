@@ -48,8 +48,12 @@ export async function getMyProfile(): Promise<ProfileDTO> {
 //   - Se il profilo esiste già → aggiorna solo full_name
 //   - Se non esiste → crea il record completo con id = auth.uid()
 //
-// email e role non vengono mai sovrascritti su un profilo già esistente:
+// email, role e brand_id non vengono mai sovrascritti su un profilo già esistente:
 // l'email è immutabile (proviene dall'auth), il role è invariante post-registrazione.
+// Nota: prima di questa fix, il payload includeva sempre role/email anche in UPDATE,
+// quindi chiamare questa funzione due volte con ruoli diversi per lo stesso account
+// (es. testare sia il flusso SMM che quello Cliente con la stessa email) sovrascriveva
+// silenziosamente il ruolo esistente. La UPDATE ora tocca solo full_name.
 export async function upsertProfile(
   fullName: string,
   role: "SMM" | "CLIENT",
@@ -57,6 +61,24 @@ export async function upsertProfile(
 ): Promise<ProfileDTO> {
   const { data: { user }, error: authError } = await supabase.auth.getUser();
   if (authError || !user) throw new Error("Utente non autenticato");
+
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (existing) {
+    const { data, error } = await supabase
+      .from("profiles")
+      .update({ full_name: fullName })
+      .eq("id", user.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(error.message);
+    return toProfileDTO(data as DbProfile);
+  }
 
   const payload: Record<string, unknown> = {
     id:        user.id,
@@ -68,7 +90,7 @@ export async function upsertProfile(
 
   const { data, error } = await supabase
     .from("profiles")
-    .upsert(payload, { onConflict: "id", ignoreDuplicates: false })
+    .insert(payload)
     .select()
     .single();
 

@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router'
-import { Clock, CheckCircle, BarChart2 } from 'lucide-react-native'
+import { FileText, BarChart2, User } from 'lucide-react-native'
 
 const PRIMARY = '#7c3aed'
 const MUTED = '#94a3b8'
@@ -17,15 +17,8 @@ export default function ClientLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Da approvare',
-          tabBarIcon: ({ color, size }) => <Clock color={color} size={size} />,
-        }}
-      />
-      <Tabs.Screen
-        name="approved"
-        options={{
-          title: 'Approvati',
-          tabBarIcon: ({ color, size }) => <CheckCircle color={color} size={size} />,
+          title: 'Post',
+          tabBarIcon: ({ color, size }) => <FileText color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -33,6 +26,13 @@ export default function ClientLayout() {
         options={{
           title: 'Dashboard',
           tabBarIcon: ({ color, size }) => <BarChart2 color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="account"
+        options={{
+          title: 'Profilo',
+          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
         }}
       />
     </Tabs>

@@ -8,7 +8,7 @@ import {
 } from 'react'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { supabase } from './supabase'
-import { getMyProfile } from './supabase/profiles'
+import { getMyProfile, getMyBrandId } from './supabase/profiles'
 
 export type Role = 'smm' | 'client'
 export type SmmMode = 'consulenza' | 'gestione'
@@ -54,7 +54,11 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (uid) {
         try {
           const profile = await getMyProfile()
-          setRole(profile.role === 'SMM' ? 'smm' : 'client')
+          const resolvedRole = profile.role === 'SMM' ? 'smm' : 'client'
+          setRole(resolvedRole)
+          if (resolvedRole === 'client') {
+            setActiveBrandId(await getMyBrandId())
+          }
         } catch {
           // profilo non trovato — default smm
         }
@@ -72,10 +76,16 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
       if (uid) {
         try {
           const profile = await getMyProfile()
-          setRole(profile.role === 'SMM' ? 'smm' : 'client')
+          const resolvedRole = profile.role === 'SMM' ? 'smm' : 'client'
+          setRole(resolvedRole)
+          if (resolvedRole === 'client') {
+            setActiveBrandId(await getMyBrandId())
+          }
         } catch {
           // profilo non trovato
         }
+      } else {
+        setActiveBrandId(null)
       }
     })
 

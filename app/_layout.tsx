@@ -48,11 +48,18 @@ function AuthGuard() {
     if (!isReady) return
 
     const inAuth = segments[0] === '(auth)'
+    const expectedSegment = role === 'smm' ? '(smm)' : '(client)'
+    const expectedGroup = role === 'smm' ? '/(smm)' : '/(client)'
 
     if (!userId && !inAuth) {
       router.replace('/(auth)/login')
     } else if (userId && inAuth) {
-      router.replace(role === 'smm' ? '/(smm)' : '/(client)')
+      router.replace(expectedGroup)
+    } else if (userId && !inAuth && segments[0] && segments[0] !== expectedSegment) {
+      // Il gruppo montato non corrisponde al ruolo risolto: può succedere su reload web,
+      // dove Expo Router risolve l'URL prima che il ruolo sia noto e (smm)/(client)
+      // possono condividere lo stesso path (es. entrambi hanno un index o un profile).
+      router.replace(expectedGroup)
     }
 
     // Nascondi la splash dopo la decisione di routing, non prima
