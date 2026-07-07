@@ -2,6 +2,7 @@
 
 export type PostStatus = "draft" | "pending" | "approved";
 export type PostType = "Post" | "Reel" | "Carosello" | "Story";
+export type WorkMode = "gestione" | "consulenza";
 
 export interface Post {
   id: string;
@@ -13,9 +14,11 @@ export interface Post {
   date: string; // ISO "YYYY-MM-DDThh:mm:ss"
   status: PostStatus;
   hasChangesRequested: boolean;
+  workMode: WorkMode;
   feedback?: string;
   mediaLink?: string;
   internalNotes?: string;
+  lastUpdatedBy?: string; // profile id di chi ha fatto l'ultima modifica di contenuto
 }
 
 export interface Brand {
@@ -31,6 +34,7 @@ export interface Brand {
   facebookUrl?: string;
   telegramUrl?: string;
   linkedinUrl?: string;
+  workMode: WorkMode;
 }
 
 export interface ProfileDTO {

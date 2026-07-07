@@ -14,8 +14,9 @@ import { spacing } from '../../../constants/spacing'
 import { typography } from '../../../constants/typography'
 
 export default function BrandsListScreen() {
-  const { userId } = useAppStore()
+  const { userId, smmMode } = useAppStore()
   const { data: brands, isLoading, refetch } = useBrands(userId)
+  const filteredBrands = brands?.filter((b) => b.workMode === smmMode)
   const sheetRef = useRef<BottomSheetModal>(null)
 
   return (
@@ -28,17 +29,21 @@ export default function BrandsListScreen() {
           <SkeletonCard />
           <SkeletonCard />
         </View>
-      ) : !brands?.length ? (
+      ) : !filteredBrands?.length ? (
         <View style={styles.emptyWrap}>
           <EmptyState
             icon={Users}
             title="Nessun cliente"
-            subtitle="Aggiungi il tuo primo cliente con il tasto +"
+            subtitle={
+              smmMode === 'consulenza'
+                ? 'Nessun cliente in Consulenza — aggiungine uno con il tasto +'
+                : 'Aggiungi il tuo primo cliente con il tasto +'
+            }
           />
         </View>
       ) : (
         <FlatList
-          data={brands}
+          data={filteredBrands}
           keyExtractor={(b) => b.id}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (

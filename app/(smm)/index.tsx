@@ -42,6 +42,10 @@ export default function SmmDashboardScreen() {
     refetch: refetchPosts,
   } = useRecentPosts(userId)
 
+  // Filtro reale per la tab attiva — prima smmMode era solo cosmetico
+  const filteredActivities = activities?.filter((a) => a.workMode === smmMode)
+  const filteredPosts = recentPosts?.filter((p) => p.workMode === smmMode)
+
   const onRefresh = async () => {
     await Promise.all([refetchActivities(), refetchPosts()])
   }
@@ -91,7 +95,7 @@ export default function SmmDashboardScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </>
-        ) : !activities?.length ? (
+        ) : !filteredActivities?.length ? (
           <EmptyState
             icon={ActivityIcon}
             title="Nessuna attività"
@@ -99,7 +103,7 @@ export default function SmmDashboardScreen() {
           />
         ) : (
           <View style={styles.list}>
-            {activities.map((a) => (
+            {filteredActivities.map((a) => (
               <ActivityCard
                 key={a.id}
                 activity={a}
@@ -118,7 +122,7 @@ export default function SmmDashboardScreen() {
             <SkeletonCard />
             <SkeletonCard />
           </>
-        ) : !recentPosts?.length ? (
+        ) : !filteredPosts?.length ? (
           <EmptyState
             icon={Bell}
             title="Nessun post recente"
@@ -126,7 +130,7 @@ export default function SmmDashboardScreen() {
           />
         ) : (
           <View style={styles.list}>
-            {recentPosts.map((p) => (
+            {filteredPosts.map((p) => (
               <PostCard key={p.id} post={p} />
             ))}
           </View>

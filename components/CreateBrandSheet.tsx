@@ -11,12 +11,18 @@ import { Input } from './ui/Input'
 import { Button } from './ui/Button'
 import { useCreateBrand } from '../src/lib/queries'
 import { useAppStore } from '../src/lib/app-store'
+import type { WorkMode } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
-import { spacing } from '../constants/spacing'
+import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
 
 const CATEGORIES = ['Ristorazione', 'Benessere', 'Abbigliamento', 'Fitness', 'Tecnologia']
 const EXTRA_CATEGORIES = ['Finanza']
+
+const WORK_MODES: { value: WorkMode; label: string; hint: string }[] = [
+  { value: 'gestione',   label: 'Gestione',   hint: 'Crei tu i post, il cliente li approva.' },
+  { value: 'consulenza', label: 'Consulenza', hint: 'Il cliente crea i post, tu suggerisci/modifichi/approvi.' },
+]
 
 const schema = z.object({
   name:     z.string().min(1, 'Nome obbligatorio'),
@@ -37,10 +43,12 @@ interface CreateBrandSheetProps {
 }
 
 export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
-  const { userId } = useAppStore()
+  const { userId, smmMode } = useAppStore()
   const { mutateAsync: createBrand } = useCreateBrand()
   const [showSocial, setShowSocial] = useState(false)
   const [showExtraModal, setShowExtraModal] = useState(false)
+  // Default alla modalità della tab attiva in dashboard — modificabile prima di salvare
+  const [workMode, setWorkMode] = useState<WorkMode>(smmMode)
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -61,9 +69,11 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
         linkedinUrl:  data.linkedinUrl || undefined,
         telegramUrl:  data.telegramUrl || undefined,
         smmId:        userId!,
+        workMode,
       })
       Toast.show({ type: 'success', text1: 'Brand creato!' })
       reset()
+      setWorkMode(smmMode)
       sheetRef.current?.dismiss()
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
@@ -73,6 +83,28 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
   return (
     <Sheet ref={sheetRef} title="Nuovo cliente" snapPoints={['92%']} scrollable>
       <View style={styles.form}>
+        {/* Modalità cliente */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Modalità</Text>
+          <View style={styles.modeRow}>
+            {WORK_MODES.map((m) => {
+              const active = workMode === m.value
+              return (
+                <Pressable
+                  key={m.value}
+                  style={[styles.modeBtn, active && styles.modeBtnActive]}
+                  onPress={() => setWorkMode(m.value)}
+                >
+                  <Text style={[styles.modeBtnLabel, active && styles.modeBtnLabelActive]}>{m.label}</Text>
+                </Pressable>
+              )
+            })}
+          </View>
+          <Text style={styles.modeHint}>
+            {WORK_MODES.find((m) => m.value === workMode)?.hint}
+          </Text>
+        </View>
+
         <Controller control={control} name="name"
           render={({ field: { onChange, onBlur, value } }) => (
             <Input label="Nome brand *" placeholder="Es. Pizzeria Da Mario"
@@ -192,6 +224,21 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
 
 const styles = StyleSheet.create({
   form: { padding: spacing.lg, gap: spacing.lg },
+  field: { gap: spacing.xs },
+  fieldLabel: { ...typography.label, color: colors.text.secondary },
+  modeRow: { flexDirection: 'row', gap: spacing.sm },
+  modeBtn: {
+    flex: 1,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
+  },
+  modeBtnActive: { borderColor: colors.primary, backgroundColor: colors.primary + '18' },
+  modeBtnLabel: { ...typography.smallMedium, color: colors.text.secondary },
+  modeBtnLabelActive: { color: colors.primary },
+  modeHint: { ...typography.small, color: colors.text.muted },
   socialToggle: {
     flexDirection: 'row',
     alignItems: 'center',

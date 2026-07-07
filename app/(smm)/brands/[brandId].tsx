@@ -1,12 +1,12 @@
 import { useMemo, useEffect, useRef, useState } from 'react'
-import { FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
-import { ArrowLeft, CalendarDays, Copy, Plus } from 'lucide-react-native'
+import { ArrowLeft, CalendarDays, Copy, Plus, Repeat } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
 import type { BottomSheetModal } from '../../../components/ui/BottomSheet'
-import { usePosts, useBrands } from '../../../src/lib/queries'
+import { usePosts, useBrands, useUpdateBrand } from '../../../src/lib/queries'
 import { useAppStore } from '../../../src/lib/app-store'
-import type { Post } from '../../../src/lib/mock-data'
+import type { Post, WorkMode } from '../../../src/lib/mock-data'
 import { PostCard } from '../../../components/PostCard'
 import { CreatePostSheet } from '../../../components/CreatePostSheet'
 import { PostDetailSheet } from '../../../components/PostDetailSheet'
@@ -22,12 +22,39 @@ export default function BrandDetailScreen() {
   const { userId } = useAppStore()
   const { data: brands } = useBrands(userId)
   const { data: posts, isLoading, refetch } = usePosts(brandId)
+  const { mutateAsync: updateBrand } = useUpdateBrand()
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [defaultDate, setDefaultDate] = useState<Date | undefined>(undefined)
   const createSheetRef = useRef<BottomSheetModal>(null)
   const detailSheetRef = useRef<BottomSheetModal>(null)
 
   const brand = brands?.find((b) => b.id === brandId)
+  const isConsulenza = brand?.workMode === 'consulenza'
+
+  const handleSwitchMode = () => {
+    if (!brand) return
+    const nextMode: WorkMode = isConsulenza ? 'gestione' : 'consulenza'
+    const nextLabel = nextMode === 'consulenza' ? 'Consulenza' : 'Gestione'
+    const message = `${brand.name} passerà a ${nextLabel}. I post già esistenti restano invariati: la nuova modalità vale solo per i post creati da questo momento in poi.`
+
+    const doSwitch = async () => {
+      try {
+        await updateBrand({ id: brandId, dto: { workMode: nextMode } })
+        Toast.show({ type: 'success', text1: `Cliente passato a ${nextLabel}` })
+      } catch (e: any) {
+        Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
+      }
+    }
+
+    if (Platform.OS === 'web') {
+      if (window.confirm(message)) doSwitch()
+    } else {
+      Alert.alert(`Passa a ${nextLabel}?`, message, [
+        { text: 'Annulla', style: 'cancel' },
+        { text: 'Conferma', onPress: doSwitch },
+      ])
+    }
+  }
 
   const openedRef = useRef(false)
   useEffect(() => {
@@ -71,6 +98,12 @@ export default function BrandDetailScreen() {
             <Text style={styles.brandCategory}>{brand.category}</Text>
           )}
         </View>
+        {!!brand && (
+          <Pressable style={styles.modeChip} onPress={handleSwitchMode} hitSlop={8}>
+            <Repeat size={12} color={colors.primary} />
+            <Text style={styles.modeChipText}>{isConsulenza ? 'Consulenza' : 'Gestione'}</Text>
+          </Pressable>
+        )}
       </View>
 
       <FlatList
@@ -96,6 +129,10 @@ export default function BrandDetailScreen() {
               posts={posts ?? []}
               brandId={brandId}
               onDayPress={(date) => {
+                if (isConsulenza) {
+                  Toast.show({ type: 'info', text1: 'In Consulenza è il cliente a creare i post' })
+                  return
+                }
                 setDefaultDate(date)
                 createSheetRef.current?.present()
               }}
@@ -127,14 +164,16 @@ export default function BrandDetailScreen() {
         )}
       />
 
-      {/* FAB crea post */}
-      <Pressable
-        style={styles.fab}
-        onPress={() => createSheetRef.current?.present()}
-        hitSlop={8}
-      >
-        <Plus size={26} color="#fff" />
-      </Pressable>
+      {/* FAB crea post — solo Gestione: in Consulenza è il cliente a creare i post */}
+      {!isConsulenza && (
+        <Pressable
+          style={styles.fab}
+          onPress={() => createSheetRef.current?.present()}
+          hitSlop={8}
+        >
+          <Plus size={26} color="#fff" />
+        </Pressable>
+      )}
 
       <CreatePostSheet sheetRef={createSheetRef} brandId={brandId} defaultDate={defaultDate} />
       <PostDetailSheet sheetRef={detailSheetRef} post={selectedPost} />
@@ -159,6 +198,19 @@ const styles = StyleSheet.create({
   headerTitle: { flex: 1 },
   brandName: { ...typography.h3, color: colors.text.primary },
   brandCategory: { ...typography.small, color: colors.primary },
+  modeChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+    backgroundColor: colors.primary + '10',
+    flexShrink: 0,
+  },
+  modeChipText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
   list: { paddingBottom: 100 },
   postsHeader: {
     paddingHorizontal: spacing.lg,

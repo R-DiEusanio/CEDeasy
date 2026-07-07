@@ -11,6 +11,7 @@ import { Sheet } from './ui/BottomSheet'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
 import { EditPostSheet } from './EditPostSheet'
+import { CommentsThread } from './CommentsThread'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -28,16 +29,37 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
 
   if (!post) return null
 
+  const isConsulenza = post.workMode === 'consulenza'
   const visualStatus = getVisualStatus(post.status, post.hasChangesRequested)
-  const canSend    = visualStatus === 'draft' || visualStatus === 'changes_requested'
-  const canReset   = visualStatus === 'pending'
-  const canEdit    = visualStatus === 'draft' || visualStatus === 'changes_requested'
+
+  // Gestione (SMM crea, cliente approva) — comportamento invariato
+  const canSend  = !isConsulenza && (visualStatus === 'draft' || visualStatus === 'changes_requested')
+  const canReset = !isConsulenza && visualStatus === 'pending'
+  const canEdit  = !isConsulenza && (visualStatus === 'draft' || visualStatus === 'changes_requested')
+
+  // Consulenza (cliente crea, SMM suggerisce/modifica/approva) — l'SMM agisce solo
+  // mentre il post è in revisione (SMM_REVIEW → visualStatus 'pending'); prima che il
+  // cliente lo invii (CLIENT_DRAFT → 'draft') non c'è nulla da fare; dopo l'approvazione
+  // (SMM_APPROVED → 'approved') è di sola lettura, come in Gestione.
+  const notYetSent = isConsulenza && visualStatus === 'draft'
+  const inReview    = isConsulenza && visualStatus === 'pending'
 
   const handleSendToClient = async () => {
     try {
       await updateStatus({ id: post.id, status: 'pending', brandId: post.brandId })
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       Toast.show({ type: 'success', text1: 'Post inviato al cliente!' })
+      sheetRef.current?.dismiss()
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
+    }
+  }
+
+  const handleApprove = async () => {
+    try {
+      await updateStatus({ id: post.id, status: 'approved', brandId: post.brandId })
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      Toast.show({ type: 'success', text1: 'Post approvato!' })
       sheetRef.current?.dismiss()
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
@@ -91,6 +113,15 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
           </Text>
         </View>
 
+        {/* Consulenza: il cliente non ha ancora inviato il post per la revisione */}
+        {notYetSent && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>
+              Il cliente sta ancora scrivendo questo post — non lo ha ancora inviato per la revisione.
+            </Text>
+          </View>
+        )}
+
         {/* Caption */}
         {!!post.caption && (
           <View style={styles.section}>
@@ -133,9 +164,16 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
           </View>
         )}
 
+        {/* Suggerimenti SMM ancorati a un campo (solo Consulenza, mentre in revisione) */}
+        {inReview && (
+          <View style={styles.section}>
+            <CommentsThread postId={post.id} suggestionMode />
+          </View>
+        )}
+
         {/* Azioni SMM */}
         <View style={styles.actions}>
-          {canEdit && (
+          {(canEdit || inReview) && (
             <Button
               label="Modifica post"
               onPress={() => editSheetRef.current?.present()}
@@ -147,6 +185,14 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
             <Button
               label="Invia al cliente"
               onPress={handleSendToClient}
+              loading={updatingStatus}
+              fullWidth
+            />
+          )}
+          {inReview && (
+            <Button
+              label="Approva"
+              onPress={handleApprove}
               loading={updatingStatus}
               fullWidth
             />
@@ -185,6 +231,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   date: { ...typography.small, color: colors.text.muted },
+  infoBox: {
+    backgroundColor: colors.input,
+    padding: spacing.md,
+    borderRadius: radius.md,
+  },
+  infoText: { ...typography.small, color: colors.text.secondary },
   section: { gap: spacing.xs },
   label: { ...typography.label, color: colors.text.muted },
   body: { ...typography.body, color: colors.text.primary, lineHeight: 22 },

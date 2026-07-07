@@ -7,12 +7,14 @@ import {
   Text,
   View,
 } from 'react-native'
-import { CheckCircle, Clock } from 'lucide-react-native'
+import { CheckCircle, Clock, FileEdit, Plus } from 'lucide-react-native'
 import type { BottomSheetModal } from '../../components/ui/BottomSheet'
-import { useClientPosts } from '../../src/lib/queries'
+import { useClientPosts, useBrand } from '../../src/lib/queries'
+import { useAppStore } from '../../src/lib/app-store'
 import type { Post, PostStatus } from '../../src/lib/mock-data'
 import { PostCard } from '../../components/PostCard'
 import { ClientPostDetailSheet } from '../../components/ClientPostDetailSheet'
+import { CreateClientPostSheet } from '../../components/CreateClientPostSheet'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { SkeletonCard } from '../../components/ui/SkeletonLoader'
 import { colors } from '../../constants/colors'
@@ -24,12 +26,26 @@ const FILTERS: { key: PostStatus; label: string }[] = [
   { key: 'approved', label: 'Approvati' },
 ]
 
+// In Consulenza il cliente ha anche le proprie bozze (CLIENT_DRAFT → status "draft"
+// lato frontend) da rivedere/inviare — invisibili nei filtri Gestione esistenti.
+// "In revisione" invece di "Da approvare": in Consulenza è l'SMM ad approvare, non il cliente.
+const CONSULENZA_FILTERS: { key: PostStatus; label: string }[] = [
+  { key: 'draft', label: 'Bozze' },
+  { key: 'pending', label: 'In revisione' },
+  { key: 'approved', label: 'Approvati' },
+]
+
 export default function ClientPostsScreen() {
+  const { activeBrandId } = useAppStore()
+  const { data: brand } = useBrand(activeBrandId)
+  const isConsulenza = brand?.workMode === 'consulenza'
   const { data: allPosts, isLoading, refetch } = useClientPosts()
   const [filter, setFilter] = useState<PostStatus>('pending')
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const detailSheetRef = useRef<BottomSheetModal>(null)
+  const createSheetRef = useRef<BottomSheetModal>(null)
 
+  const filters = isConsulenza ? CONSULENZA_FILTERS : FILTERS
   const posts = allPosts?.filter((p) => p.status === filter) ?? []
 
   const openPost = (post: Post) => {
@@ -43,7 +59,7 @@ export default function ClientPostsScreen() {
         <Text style={styles.heading}>Post</Text>
 
         <View style={styles.segmented}>
-          {FILTERS.map(({ key, label }) => {
+          {filters.map(({ key, label }) => {
             const active = filter === key
             return (
               <Pressable
@@ -68,17 +84,23 @@ export default function ClientPostsScreen() {
         </View>
       ) : !posts.length ? (
         <View style={styles.emptyWrap}>
-          {filter === 'pending' ? (
+          {filter === 'draft' ? (
+            <EmptyState
+              icon={FileEdit}
+              title="Nessuna bozza"
+              subtitle="Crea il tuo primo post con il tasto +"
+            />
+          ) : filter === 'pending' ? (
             <EmptyState
               icon={Clock}
-              title="Nessun post in attesa"
-              subtitle="I post inviati dal tuo SMM appariranno qui"
+              title={isConsulenza ? 'Nessun post in revisione' : 'Nessun post in attesa'}
+              subtitle={isConsulenza ? 'I post che invii al tuo SMM appariranno qui' : 'I post inviati dal tuo SMM appariranno qui'}
             />
           ) : (
             <EmptyState
               icon={CheckCircle}
               title="Nessun post approvato"
-              subtitle="I post approvati da te appariranno qui"
+              subtitle={isConsulenza ? 'I post approvati dal tuo SMM appariranno qui' : 'I post approvati da te appariranno qui'}
             />
           )}
         </View>
@@ -100,7 +122,18 @@ export default function ClientPostsScreen() {
         />
       )}
 
+      {isConsulenza && (
+        <Pressable
+          style={styles.fab}
+          onPress={() => createSheetRef.current?.present()}
+          hitSlop={8}
+        >
+          <Plus size={26} color="#fff" />
+        </Pressable>
+      )}
+
       <ClientPostDetailSheet sheetRef={detailSheetRef} post={selectedPost} />
+      <CreateClientPostSheet sheetRef={createSheetRef} />
     </View>
   )
 }
@@ -142,4 +175,20 @@ const styles = StyleSheet.create({
   list: { padding: spacing.lg, gap: spacing.sm, paddingBottom: 32 },
   skeletons: { padding: spacing.lg, gap: spacing.sm },
   emptyWrap: { flex: 1, justifyContent: 'center' },
+  fab: {
+    position: 'absolute',
+    bottom: 32,
+    right: spacing.lg,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
 })

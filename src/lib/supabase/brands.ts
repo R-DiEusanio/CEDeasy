@@ -16,7 +16,20 @@ type DbBrand = {
   facebook_url: string | null;
   telegram_url: string | null;
   linkedin_url: string | null;
+  work_mode: string;
   created_at: string | null;
+};
+
+// ─── work_mode: mapping bidirezionale DB ↔ frontend ──────────────────────────
+
+const DB_TO_FRONTEND_WORK_MODE: Record<string, Brand["workMode"]> = {
+  FULL_MANAGEMENT: "gestione",
+  CONSULTANCY:     "consulenza",
+};
+
+const FRONTEND_TO_DB_WORK_MODE: Record<Brand["workMode"], string> = {
+  gestione:   "FULL_MANAGEMENT",
+  consulenza: "CONSULTANCY",
 };
 
 // ─── Converters ───────────────────────────────────────────────────────────────
@@ -35,6 +48,7 @@ function toBrand(row: DbBrand): Brand {
     facebookUrl:  row.facebook_url  ?? undefined,
     telegramUrl:  row.telegram_url  ?? undefined,
     linkedinUrl:  row.linkedin_url  ?? undefined,
+    workMode:     DB_TO_FRONTEND_WORK_MODE[row.work_mode] ?? "gestione",
   };
 }
 
@@ -51,6 +65,7 @@ function toDbInsert(dto: Omit<Brand, "id">): Omit<DbBrand, "id" | "created_at"> 
     facebook_url: dto.facebookUrl  ?? null,
     telegram_url: dto.telegramUrl  ?? null,
     linkedin_url: dto.linkedinUrl  ?? null,
+    work_mode:    FRONTEND_TO_DB_WORK_MODE[dto.workMode],
   };
 }
 
@@ -108,6 +123,8 @@ export async function updateBrand(id: string, dto: Partial<Brand>): Promise<Bran
   if (dto.facebookUrl  !== undefined) patch.facebook_url  = dto.facebookUrl  ?? null;
   if (dto.telegramUrl  !== undefined) patch.telegram_url  = dto.telegramUrl  ?? null;
   if (dto.linkedinUrl  !== undefined) patch.linkedin_url  = dto.linkedinUrl  ?? null;
+  // Cambio Gestione↔Consulenza: scelta esclusiva dello SMM, in qualsiasi momento (Task 1.2)
+  if (dto.workMode     !== undefined) patch.work_mode     = FRONTEND_TO_DB_WORK_MODE[dto.workMode];
 
   const { data, error } = await supabase
     .from("brands")

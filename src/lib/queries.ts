@@ -6,11 +6,11 @@ import { getBrands, getBrandById, createBrand, updateBrand, deleteBrand } from "
 import {
   getPosts, getClientPosts, getRecentPosts, getRecentActivities,
   getClientStats, getClientKPIs, getClientComparison,
-  createPost, updatePost, deletePost, updatePostStatus,
+  createPost, createClientPost, updatePost, deletePost, updatePostStatus,
 } from "./supabase/posts";
 import { getComments, addComment } from "./supabase/comments";
-import type { Comment } from "./supabase/comments";
-import type { Activity, ClientStats, ClientKPIs, ClientComparison } from "./supabase/posts";
+import type { Comment, CommentTargetField } from "./supabase/comments";
+import type { Activity, ClientStats, ClientKPIs, ClientComparison, CreateClientPostDto } from "./supabase/posts";
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -146,10 +146,22 @@ export function useRecentPosts(smmId: string | null | undefined) {
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (dto: Omit<Post, "id" | "hasChangesRequested">) => createPost(dto),
+    mutationFn: (dto: Omit<Post, "id" | "hasChangesRequested" | "workMode">) => createPost(dto),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["posts", data.brandId] });
       qc.invalidateQueries({ queryKey: ["posts", "recent"] });
+    },
+  });
+}
+
+// Creazione post lato Cliente (flusso Consulenza) — vedi createClientPost in supabase/posts.ts
+export function useCreateClientPost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (dto: CreateClientPostDto) => createClientPost(dto),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["client", "posts"] });
+      qc.invalidateQueries({ queryKey: ["client", "stats"] });
     },
   });
 }
@@ -204,12 +216,12 @@ export function useComments(postId: string | null | undefined) {
 export function useAddComment() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ postId, body }: { postId: string; body: string }) =>
-      addComment(postId, body),
+    mutationFn: ({ postId, body, targetField }: { postId: string; body: string; targetField?: CommentTargetField }) =>
+      addComment(postId, body, targetField),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["comments", vars.postId] });
     },
   });
 }
 
-export type { Comment };
+export type { Comment, CommentTargetField };

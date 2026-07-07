@@ -1,5 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { CheckCircle, AlertTriangle, FilePlus, User } from 'lucide-react-native'
+import { CheckCircle, AlertTriangle, FilePlus, MessageSquare, User } from 'lucide-react-native'
 import type { Activity } from '../src/lib/supabase/posts'
 import { Card } from './ui/Card'
 import { colors } from '../constants/colors'
@@ -10,6 +10,7 @@ const ICON_MAP = {
   approved:           { Icon: CheckCircle, color: colors.status.approved.dot },
   revision_requested: { Icon: AlertTriangle, color: colors.status.changes.dot },
   new_post:           { Icon: FilePlus, color: colors.primary },
+  client_proposed:    { Icon: MessageSquare, color: colors.status.pending.dot },
 }
 
 interface ActivityCardProps {

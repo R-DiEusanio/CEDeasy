@@ -24,6 +24,7 @@ interface PostCardProps {
 export function PostCard({ post, onPress }: PostCardProps) {
   const { Icon, color } = TYPE_ICON[post.type] ?? TYPE_ICON['Post']
   const visualStatus = getVisualStatus(post.status, post.hasChangesRequested)
+  const awaitingSmmReview = post.workMode === 'consulenza' && visualStatus === 'pending'
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.7 }}>
@@ -35,6 +36,13 @@ export function PostCard({ post, onPress }: PostCardProps) {
           </View>
           <Text style={styles.title} numberOfLines={1}>{post.title}</Text>
         </View>
+
+        {/* Proposto dal cliente, in attesa di revisione SMM */}
+        {awaitingSmmReview && (
+          <View style={styles.proposedChip}>
+            <Text style={styles.proposedChipText}>Proposto dal cliente · da rivedere</Text>
+          </View>
+        )}
 
         {/* Cliente */}
         {!!post.brandName && (
@@ -76,4 +84,12 @@ const styles = StyleSheet.create({
   date: { ...typography.small, color: colors.text.muted },
   clientRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   clientName: { ...typography.small, color: colors.text.muted, fontStyle: 'italic' },
+  proposedChip: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 3,
+    borderRadius: 20,
+    backgroundColor: colors.status.pending.bg,
+  },
+  proposedChipText: { ...typography.caption, color: colors.status.pending.text, fontWeight: '600' },
 })
