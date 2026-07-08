@@ -11,6 +11,7 @@ import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
 import { Button } from './ui/Button'
 import { useUpdatePost } from '../src/lib/queries'
+import { useAppStore } from '../src/lib/app-store'
 import type { Post, PostType } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
@@ -32,7 +33,12 @@ interface EditPostSheetProps {
   onSaved?: () => void
 }
 
+// Condiviso tra SMM e cliente (Consulenza) — usa sempre useUpdatePost, già
+// funzionante per entrambi grazie alla RLS estesa nella Task 1. "Note interne"
+// resta nascosto al cliente: è un campo privato dello SMM.
 export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
+  const { role } = useAppStore()
+  const isClient = role === 'client'
   const { mutateAsync: updatePost } = useUpdatePost()
   const [postType, setPostType] = useState<PostType>('Post')
   const [date, setDate] = useState(new Date())
@@ -69,12 +75,15 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
       await updatePost({
         id:  post.id,
         dto: {
-          title:         data.title,
-          caption:       data.caption ?? '',
-          type:          postType,
-          date:          isoDate(),
-          mediaLink:     data.mediaLink || undefined,
-          internalNotes: data.internalNotes || undefined,
+          title:     data.title,
+          caption:   data.caption ?? '',
+          type:      postType,
+          date:      isoDate(),
+          mediaLink: data.mediaLink || undefined,
+          // Il cliente non vede mai il campo: non va rimandato in scrittura,
+          // altrimenti sovrascriverebbe una nota SMM più recente con il valore
+          // stantio pre-caricato nel form al momento dell'apertura.
+          ...(isClient ? {} : { internalNotes: data.internalNotes || undefined }),
         },
       })
       Toast.show({ type: 'success', text1: 'Post aggiornato!' })
@@ -187,20 +196,22 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
           )}
         />
 
-        <Controller
-          control={control}
-          name="internalNotes"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Textarea
-              label="Note interne"
-              placeholder="Visibili solo a te..."
-              onChangeText={onChange}
-              onBlur={onBlur}
-              value={value ?? ''}
-              minHeight={60}
-            />
-          )}
-        />
+        {!isClient && (
+          <Controller
+            control={control}
+            name="internalNotes"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Textarea
+                label="Note interne"
+                placeholder="Visibili solo a te..."
+                onChangeText={onChange}
+                onBlur={onBlur}
+                value={value ?? ''}
+                minHeight={60}
+              />
+            )}
+          />
+        )}
 
         <Button
           label="Salva modifiche"

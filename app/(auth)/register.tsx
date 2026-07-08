@@ -54,9 +54,20 @@ export default function RegisterScreen() {
       return
     }
 
+    // Il trigger DB on_auth_user_created (handle_new_user) crea già la riga in
+    // profiles leggendo questi metadata — se non passati qui, inserisce role/brand_id
+    // sbagliati (role sempre 'CLIENT' di default, brand_id sempre null) e upsertProfile()
+    // non li corregge più: trovando il profilo già esistente aggiorna solo full_name.
     const { error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
+      options: {
+        data: {
+          full_name: data.fullName,
+          role,
+          brand_id: role === 'CLIENT' ? data.brandId : undefined,
+        },
+      },
     })
 
     if (error) {

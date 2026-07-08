@@ -5,8 +5,10 @@ import * as Haptics from 'expo-haptics'
 import Toast from 'react-native-toast-message'
 import type { BottomSheetModal } from './ui/BottomSheet'
 import type { Post } from '../src/lib/mock-data'
+import type { CommentTargetField } from '../src/lib/supabase/comments'
 import { getVisualStatus } from '../src/lib/status-config'
-import { useUpdatePostStatus, useDeletePost } from '../src/lib/queries'
+import { useUpdatePostStatus, useDeletePost, useComments } from '../src/lib/queries'
+import { useAppStore } from '../src/lib/app-store'
 import { Sheet } from './ui/BottomSheet'
 import { Badge } from './ui/Badge'
 import { Button } from './ui/Button'
@@ -15,21 +17,54 @@ import { CommentsThread } from './CommentsThread'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
-import { formatScheduledDate, formatScheduledTime } from '../src/lib/utils'
+import { formatScheduledDate, formatScheduledTime, formatRelativeDate } from '../src/lib/utils'
+
+const FIELD_LABELS: Record<CommentTargetField, string> = {
+  title:          'Titolo',
+  caption:        'Caption',
+  platform:       'Tipo',
+  media_link:     'Media',
+  scheduled_date: 'Data',
+}
 
 interface PostDetailSheetProps {
   sheetRef: React.RefObject<BottomSheetModal>
   post: Post | null
 }
 
+// Suggerimenti SMM ancorati a un campo — mostrati vicino alla sezione pertinente,
+// non in un thread generico (vista sola lettura per il cliente-creatore).
+function FieldSuggestions({ field, comments }: { field: CommentTargetField; comments: { id: string; body: string; createdAt: string }[] }) {
+  if (!comments.length) return null
+  return (
+    <View style={styles.suggestionsBox}>
+      <Text style={styles.suggestionsTitle}>💡 Suggerimento SMM · {FIELD_LABELS[field]}</Text>
+      {comments.map((c) => (
+        <View key={c.id} style={styles.suggestionItem}>
+          <Text style={styles.suggestionBody}>{c.body}</Text>
+          <Text style={styles.suggestionTime}>{formatRelativeDate(c.createdAt)}</Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
+// Condiviso tra SMM (Gestione: crea/invia/reimposta; Consulenza: revisore — suggerisce,
+// modifica, approva) e cliente (Consulenza: creatore — modifica, elimina, invia
+// all'SMM, anche dopo l'approvazione). Il flusso Gestione lato cliente resta in
+// ClientPostDetailSheet.tsx, separato. Vedi modifiche/2026-07-08-piano-client-consulenza-parita-smm.md.
 export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
+  const { role, userId } = useAppStore()
   const { mutateAsync: updateStatus, isPending: updatingStatus } = useUpdatePostStatus()
   const { mutateAsync: deletePost, isPending: deleting } = useDeletePost()
+  const { data: comments = [] } = useComments(post?.id)
   const editSheetRef = useRef<BottomSheetModal>(null)
 
   if (!post) return null
 
   const isConsulenza = post.workMode === 'consulenza'
+  const isCreator = isConsulenza && role === 'client'
+  const isReviewer = isConsulenza && role === 'smm'
   const visualStatus = getVisualStatus(post.status, post.hasChangesRequested)
 
   // Gestione (SMM crea, cliente approva) — comportamento invariato
@@ -37,18 +72,36 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
   const canReset = !isConsulenza && visualStatus === 'pending'
   const canEdit  = !isConsulenza && (visualStatus === 'draft' || visualStatus === 'changes_requested')
 
-  // Consulenza (cliente crea, SMM suggerisce/modifica/approva) — l'SMM agisce solo
-  // mentre il post è in revisione (SMM_REVIEW → visualStatus 'pending'); prima che il
-  // cliente lo invii (CLIENT_DRAFT → 'draft') non c'è nulla da fare; dopo l'approvazione
-  // (SMM_APPROVED → 'approved') è di sola lettura, come in Gestione.
+  // Consulenza — revisore (SMM): agisce solo mentre il post è in revisione (SMM_REVIEW)
   const notYetSent = isConsulenza && visualStatus === 'draft'
   const inReview    = isConsulenza && visualStatus === 'pending'
+  const reviewerCanAct = isReviewer && inReview
+
+  // Consulenza — creatore (cliente): stessi poteri dello SMM in Gestione, modifica/elimina
+  // sempre (anche dopo l'approvazione, Task 1.2), invio all'SMM solo prima della revisione
+  const creatorCanEdit = isCreator
+  const creatorCanSend = isCreator && notYetSent
+  const modifiedBySmm = isCreator && !!post.lastUpdatedBy && post.lastUpdatedBy !== userId
+
+  const suggestionsFor = (field: CommentTargetField) => comments.filter((c) => c.targetField === field)
+  const generalSuggestions = comments.filter((c) => !c.targetField)
 
   const handleSendToClient = async () => {
     try {
       await updateStatus({ id: post.id, status: 'pending', brandId: post.brandId })
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
       Toast.show({ type: 'success', text1: 'Post inviato al cliente!' })
+      sheetRef.current?.dismiss()
+    } catch (e: any) {
+      Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
+    }
+  }
+
+  const handleSendToSmm = async () => {
+    try {
+      await updateStatus({ id: post.id, status: 'pending', brandId: post.brandId })
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+      Toast.show({ type: 'success', text1: 'Post inviato al tuo SMM!' })
       sheetRef.current?.dismiss()
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
@@ -113,14 +166,31 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
           </Text>
         </View>
 
-        {/* Consulenza: il cliente non ha ancora inviato il post per la revisione */}
-        {notYetSent && (
+        {/* Consulenza, revisore: il cliente non ha ancora inviato il post per la revisione */}
+        {notYetSent && isReviewer && (
           <View style={styles.infoBox}>
             <Text style={styles.infoText}>
               Il cliente sta ancora scrivendo questo post — non lo ha ancora inviato per la revisione.
             </Text>
           </View>
         )}
+
+        {/* Consulenza, creatore: bozza non ancora inviata */}
+        {notYetSent && isCreator && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>Bozza non ancora inviata al tuo SMM.</Text>
+          </View>
+        )}
+
+        {/* Consulenza, creatore: l'SMM ha modificato direttamente il contenuto (Q2: nessun diff, solo nota) */}
+        {modifiedBySmm && (
+          <View style={styles.infoBox}>
+            <Text style={styles.infoText}>Il tuo SMM ha modificato questo post.</Text>
+          </View>
+        )}
+
+        {/* Titolo (con eventuale suggerimento ancorato, solo vista creatore) */}
+        {isCreator && <FieldSuggestions field="title" comments={suggestionsFor('title')} />}
 
         {/* Caption */}
         {!!post.caption && (
@@ -129,8 +199,9 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
             <Text style={styles.body}>{post.caption}</Text>
           </View>
         )}
+        {isCreator && <FieldSuggestions field="caption" comments={suggestionsFor('caption')} />}
 
-        {/* Feedback cliente */}
+        {/* Feedback cliente (solo Gestione) */}
         {!!post.feedback && (
           <View style={[styles.section, styles.feedbackBox]}>
             <Text style={[styles.label, { color: colors.status.changes.text }]}>
@@ -155,25 +226,41 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
             </Pressable>
           </View>
         )}
+        {isCreator && <FieldSuggestions field="media_link" comments={suggestionsFor('media_link')} />}
+        {isCreator && <FieldSuggestions field="platform" comments={suggestionsFor('platform')} />}
+        {isCreator && <FieldSuggestions field="scheduled_date" comments={suggestionsFor('scheduled_date')} />}
 
-        {/* Note interne */}
-        {!!post.internalNotes && (
+        {/* Suggerimenti generici del creatore (non ancorati a un campo) */}
+        {isCreator && generalSuggestions.length > 0 && (
+          <View style={styles.suggestionsBox}>
+            <Text style={styles.suggestionsTitle}>💡 Suggerimento SMM</Text>
+            {generalSuggestions.map((c) => (
+              <View key={c.id} style={styles.suggestionItem}>
+                <Text style={styles.suggestionBody}>{c.body}</Text>
+                <Text style={styles.suggestionTime}>{formatRelativeDate(c.createdAt)}</Text>
+              </View>
+            ))}
+          </View>
+        )}
+
+        {/* Note interne (solo SMM) */}
+        {!!post.internalNotes && !isCreator && (
           <View style={styles.section}>
             <Text style={styles.label}>Note interne</Text>
             <Text style={styles.body}>{post.internalNotes}</Text>
           </View>
         )}
 
-        {/* Suggerimenti SMM ancorati a un campo (solo Consulenza, mentre in revisione) */}
-        {inReview && (
+        {/* Composer suggerimenti — solo revisore SMM, mentre in revisione */}
+        {reviewerCanAct && (
           <View style={styles.section}>
             <CommentsThread postId={post.id} suggestionMode />
           </View>
         )}
 
-        {/* Azioni SMM */}
+        {/* Azioni */}
         <View style={styles.actions}>
-          {(canEdit || inReview) && (
+          {(canEdit || reviewerCanAct || creatorCanEdit) && (
             <Button
               label="Modifica post"
               onPress={() => editSheetRef.current?.present()}
@@ -189,7 +276,15 @@ export function PostDetailSheet({ sheetRef, post }: PostDetailSheetProps) {
               fullWidth
             />
           )}
-          {inReview && (
+          {creatorCanSend && (
+            <Button
+              label="Invia all'SMM"
+              onPress={handleSendToSmm}
+              loading={updatingStatus}
+              fullWidth
+            />
+          )}
+          {reviewerCanAct && (
             <Button
               label="Approva"
               onPress={handleApprove}
@@ -249,6 +344,18 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: colors.status.changes.dot,
   },
+  suggestionsBox: {
+    backgroundColor: colors.status.pending.bg,
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.status.pending.dot,
+    gap: spacing.xs,
+  },
+  suggestionsTitle: { ...typography.label, color: colors.status.pending.text },
+  suggestionItem: { gap: 2 },
+  suggestionBody: { ...typography.body, color: colors.status.pending.text },
+  suggestionTime: { ...typography.caption, color: colors.status.pending.text },
   actions: {
     gap: spacing.sm,
     borderTopWidth: 1,

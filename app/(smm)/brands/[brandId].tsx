@@ -1,18 +1,11 @@
-import { useMemo, useEffect, useRef, useState } from 'react'
-import { Alert, FlatList, Platform, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native'
+import { Alert, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useLocalSearchParams, router } from 'expo-router'
-import { ArrowLeft, CalendarDays, Copy, Plus, Repeat } from 'lucide-react-native'
+import { ArrowLeft, Copy, Repeat } from 'lucide-react-native'
 import Toast from 'react-native-toast-message'
-import type { BottomSheetModal } from '../../../components/ui/BottomSheet'
-import { usePosts, useBrands, useUpdateBrand } from '../../../src/lib/queries'
+import { useBrands, useUpdateBrand } from '../../../src/lib/queries'
 import { useAppStore } from '../../../src/lib/app-store'
-import type { Post, WorkMode } from '../../../src/lib/mock-data'
-import { PostCard } from '../../../components/PostCard'
-import { CreatePostSheet } from '../../../components/CreatePostSheet'
-import { PostDetailSheet } from '../../../components/PostDetailSheet'
-import { ContentGrid } from '../../../components/ContentGrid'
-import { EmptyState } from '../../../components/ui/EmptyState'
-import { SkeletonCard } from '../../../components/ui/SkeletonLoader'
+import type { WorkMode } from '../../../src/lib/mock-data'
+import { BrandPostsBoard } from '../../../components/BrandPostsBoard'
 import { colors } from '../../../constants/colors'
 import { spacing } from '../../../constants/spacing'
 import { typography } from '../../../constants/typography'
@@ -21,12 +14,7 @@ export default function BrandDetailScreen() {
   const { brandId, openPostId } = useLocalSearchParams<{ brandId: string; openPostId?: string }>()
   const { userId } = useAppStore()
   const { data: brands } = useBrands(userId)
-  const { data: posts, isLoading, refetch } = usePosts(brandId)
   const { mutateAsync: updateBrand } = useUpdateBrand()
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
-  const [defaultDate, setDefaultDate] = useState<Date | undefined>(undefined)
-  const createSheetRef = useRef<BottomSheetModal>(null)
-  const detailSheetRef = useRef<BottomSheetModal>(null)
 
   const brand = brands?.find((b) => b.id === brandId)
   const isConsulenza = brand?.workMode === 'consulenza'
@@ -56,17 +44,6 @@ export default function BrandDetailScreen() {
     }
   }
 
-  const openedRef = useRef(false)
-  useEffect(() => {
-    if (!openPostId || !posts || openedRef.current) return
-    const post = posts.find((p) => p.id === openPostId)
-    if (post) {
-      openedRef.current = true
-      setSelectedPost(post)
-      setTimeout(() => detailSheetRef.current?.present(), 300)
-    }
-  }, [openPostId, posts])
-
   const copyCode = async () => {
     try {
       if (Platform.OS === 'web') {
@@ -76,11 +53,6 @@ export default function BrandDetailScreen() {
     } catch {
       Toast.show({ type: 'error', text1: 'Copia non riuscita' })
     }
-  }
-
-  const openPost = (post: Post) => {
-    setSelectedPost(post)
-    detailSheetRef.current?.present()
   }
 
   return (
@@ -106,77 +78,13 @@ export default function BrandDetailScreen() {
         )}
       </View>
 
-      <FlatList
-        data={posts ?? []}
-        keyExtractor={(p) => p.id}
-        contentContainerStyle={styles.list}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={refetch}
-            tintColor={colors.primary}
-          />
-        }
-        ListHeaderComponent={
-          <>
-            {/* Codice Cliente */}
-            <Pressable style={styles.codeCard} onPress={copyCode}>
-              <Copy size={15} color={colors.primary} />
-              <Text style={styles.copyLabel}>Copia codice cliente</Text>
-            </Pressable>
+      {/* Codice Cliente */}
+      <Pressable style={styles.codeCard} onPress={copyCode}>
+        <Copy size={15} color={colors.primary} />
+        <Text style={styles.copyLabel}>Copia codice cliente</Text>
+      </Pressable>
 
-            <ContentGrid
-              posts={posts ?? []}
-              brandId={brandId}
-              onDayPress={(date) => {
-                if (isConsulenza) {
-                  Toast.show({ type: 'info', text1: 'In Consulenza è il cliente a creare i post' })
-                  return
-                }
-                setDefaultDate(date)
-                createSheetRef.current?.present()
-              }}
-              onPostPress={(post) => openPost(post)}
-            />
-            <View style={styles.postsHeader}>
-              <Text style={styles.sectionTitle}>Tutti i post</Text>
-            </View>
-          </>
-        }
-        ListEmptyComponent={
-          isLoading ? (
-            <View style={styles.skeletons}>
-              <SkeletonCard />
-              <SkeletonCard />
-            </View>
-          ) : (
-            <EmptyState
-              icon={CalendarDays}
-              title="Nessun post"
-              subtitle="Nessun post per questo cliente"
-            />
-          )
-        }
-        renderItem={({ item }) => (
-          <View style={styles.postItem}>
-            <PostCard post={item} onPress={() => openPost(item)} />
-          </View>
-        )}
-      />
-
-      {/* FAB crea post — solo Gestione: in Consulenza è il cliente a creare i post */}
-      {!isConsulenza && (
-        <Pressable
-          style={styles.fab}
-          onPress={() => createSheetRef.current?.present()}
-          hitSlop={8}
-        >
-          <Plus size={26} color="#fff" />
-        </Pressable>
-      )}
-
-      <CreatePostSheet sheetRef={createSheetRef} brandId={brandId} defaultDate={defaultDate} />
-      <PostDetailSheet sheetRef={detailSheetRef} post={selectedPost} />
+      <BrandPostsBoard brandId={brandId} workMode={brand?.workMode ?? 'gestione'} openPostId={openPostId} />
     </View>
   )
 }
@@ -211,17 +119,6 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   modeChipText: { ...typography.caption, color: colors.primary, fontWeight: '600' },
-  list: { paddingBottom: 100 },
-  postsHeader: {
-    paddingHorizontal: spacing.lg,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.sm,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  sectionTitle: { ...typography.h3, color: colors.text.primary },
-  postItem: { paddingHorizontal: spacing.lg, marginBottom: spacing.sm },
-  skeletons: { paddingHorizontal: spacing.lg, gap: spacing.sm },
   codeCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -238,20 +135,4 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   copyLabel: { ...typography.small, color: colors.primary, fontWeight: '600' },
-  fab: {
-    position: 'absolute',
-    bottom: 32,
-    right: spacing.lg,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-    elevation: 8,
-  },
 })

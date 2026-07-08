@@ -10,7 +10,8 @@ import { Sheet } from './ui/BottomSheet'
 import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
 import { Button } from './ui/Button'
-import { useCreatePost } from '../src/lib/queries'
+import { useCreatePost, useCreateClientPost } from '../src/lib/queries'
+import { useAppStore } from '../src/lib/app-store'
 import type { PostType } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
@@ -32,8 +33,14 @@ interface CreatePostSheetProps {
   defaultDate?: Date
 }
 
+// Condiviso tra SMM (Gestione, brandId dalla route) e cliente (Consulenza, brandId
+// derivato server-side da useCreateClientPost — il prop brandId resta accettato ma
+// ignorato in quel ramo). "Note interne" è un campo privato SMM, nascosto al cliente.
 export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSheetProps) {
+  const { role } = useAppStore()
+  const isClient = role === 'client'
   const { mutateAsync: createPost } = useCreatePost()
+  const { mutateAsync: createClientPost } = useCreateClientPost()
   const [postType, setPostType] = useState<PostType>('Post')
   const [date, setDate] = useState(defaultDate ?? new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
@@ -55,16 +62,26 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
 
   const onSubmit = async (data: FormData) => {
     try {
-      await createPost({
-        brandId,
-        title:         data.title,
-        caption:       data.caption ?? '',
-        type:          postType,
-        date:          isoDate(),
-        status:        'draft',
-        mediaLink:     data.mediaLink || undefined,
-        internalNotes: data.internalNotes || undefined,
-      })
+      if (isClient) {
+        await createClientPost({
+          title:     data.title,
+          caption:   data.caption ?? '',
+          type:      postType,
+          date:      isoDate(),
+          mediaLink: data.mediaLink || undefined,
+        })
+      } else {
+        await createPost({
+          brandId,
+          title:         data.title,
+          caption:       data.caption ?? '',
+          type:          postType,
+          date:          isoDate(),
+          status:        'draft',
+          mediaLink:     data.mediaLink || undefined,
+          internalNotes: data.internalNotes || undefined,
+        })
+      }
       Toast.show({ type: 'success', text1: 'Post creato!' })
       reset()
       sheetRef.current?.dismiss()
@@ -166,20 +183,22 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
           )}
         />
 
-        <Controller
-          control={control}
-          name="internalNotes"
-          render={({ field: { onChange, onBlur, value } }) => (
-            <Textarea
-              label="Note interne"
-              placeholder="Visibili solo a te..."
-              onChangeText={onChange}
-              onBlur={onBlur}
-              value={value ?? ''}
-              minHeight={60}
-            />
-          )}
-        />
+        {!isClient && (
+          <Controller
+            control={control}
+            name="internalNotes"
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Textarea
+                label="Note interne"
+                placeholder="Visibili solo a te..."
+                onChangeText={onChange}
+                onBlur={onBlur}
+                value={value ?? ''}
+                minHeight={60}
+              />
+            )}
+          />
+        )}
 
         <Button
           label="Crea post"
