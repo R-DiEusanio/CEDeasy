@@ -1,16 +1,18 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Brand, Post, ProfileDTO } from "./mock-data";
+import type { Brand, Post, PostStatus, ProfileDTO } from "./mock-data";
 
 import { getMyProfile, upsertProfile }                    from "./supabase/profiles";
 import { getBrands, getBrandById, createBrand, updateBrand, deleteBrand } from "./supabase/brands";
 import {
-  getPosts, getClientPosts, getRecentPosts, getRecentActivities,
+  getPosts, getAllPosts, getClientPosts, getRecentPosts, getRecentActivities,
   getClientStats, getClientKPIs, getClientComparison,
   createPost, createClientPost, updatePost, deletePost, updatePostStatus,
 } from "./supabase/posts";
 import { getComments, addComment } from "./supabase/comments";
 import type { Comment, CommentTargetField } from "./supabase/comments";
 import type { Activity, ClientStats, ClientKPIs, ClientComparison, CreateClientPostDto } from "./supabase/posts";
+import { getOrCreateInvite } from "./supabase/invites";
+import type { Invite } from "./supabase/invites";
 
 // ─── Profile ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +78,18 @@ export function useDeleteBrand() {
   });
 }
 
+// ─── Inviti ───────────────────────────────────────────────────────────────────
+
+// Riusa un invito PENDING esistente per il brand o ne crea uno nuovo — vedi
+// getOrCreateInvite in supabase/invites.ts.
+export function useInvite(brandId: string | null | undefined, smmId: string | null | undefined, nameHint?: string) {
+  return useQuery<Invite>({
+    queryKey: ["invites", brandId],
+    queryFn:  () => getOrCreateInvite(brandId!, smmId!, nameHint),
+    enabled:  !!brandId && !!smmId,
+  });
+}
+
 // ─── Activities ───────────────────────────────────────────────────────────────
 
 export function useRecentActivities() {
@@ -97,6 +111,17 @@ export function usePosts(brandId: string | null | undefined) {
     queryKey:       ["posts", brandId],
     queryFn:        () => getPosts(brandId!),
     enabled:        !!brandId,
+    refetchInterval: POST_POLL_MS,
+  });
+}
+
+// Tutti i post di tutti i clienti dello SMM — usata quando il filtro cliente
+// nell'header è su "Tutti" (Dashboard kanban, Calendario, Griglia).
+export function useAllPosts(smmId: string | null | undefined) {
+  return useQuery<Post[]>({
+    queryKey:       ["posts", "all"],
+    queryFn:        getAllPosts,
+    enabled:        !!smmId,
     refetchInterval: POST_POLL_MS,
   });
 }
@@ -146,10 +171,11 @@ export function useRecentPosts(smmId: string | null | undefined) {
 export function useCreatePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (dto: Omit<Post, "id" | "hasChangesRequested" | "workMode">) => createPost(dto),
+    mutationFn: (dto: Omit<Post, "id" | "workMode">) => createPost(dto),
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["posts", data.brandId] });
       qc.invalidateQueries({ queryKey: ["posts", "recent"] });
+      qc.invalidateQueries({ queryKey: ["posts", "all"] });
     },
   });
 }
@@ -173,6 +199,7 @@ export function useUpdatePost() {
     onSuccess: (data) => {
       qc.invalidateQueries({ queryKey: ["posts", data.brandId] });
       qc.invalidateQueries({ queryKey: ["posts", "recent"] });
+      qc.invalidateQueries({ queryKey: ["posts", "all"] });
     },
   });
 }
@@ -185,6 +212,7 @@ export function useDeletePost() {
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["posts", vars.brandId] });
       qc.invalidateQueries({ queryKey: ["posts", "recent"] });
+      qc.invalidateQueries({ queryKey: ["posts", "all"] });
     },
   });
 }
@@ -192,11 +220,12 @@ export function useDeletePost() {
 export function useUpdatePostStatus() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, status, feedback }: { id: string; status: string; brandId: string; feedback?: string }) =>
+    mutationFn: ({ id, status, feedback }: { id: string; status: PostStatus; brandId: string; feedback?: string }) =>
       updatePostStatus(id, status, feedback),
     onSuccess: (_data, vars) => {
       qc.invalidateQueries({ queryKey: ["posts", vars.brandId] });
       qc.invalidateQueries({ queryKey: ["posts", "recent"] });
+      qc.invalidateQueries({ queryKey: ["posts", "all"] });
       qc.invalidateQueries({ queryKey: ["client", "posts"] });
     },
   });

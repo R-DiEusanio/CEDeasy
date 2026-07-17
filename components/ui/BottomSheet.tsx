@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
   },
-  title: { ...typography.h3, color: colors.text.primary },
+  title: { ...typography.displayHeadingMedium, color: colors.text.primary },
   closeBtn: { padding: spacing.xs },
   scroll: { flex: 1 },
   scrollContent: { paddingBottom: spacing['3xl'] },

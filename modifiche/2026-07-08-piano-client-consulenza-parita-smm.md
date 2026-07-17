@@ -172,10 +172,12 @@ Senza questa migrazione: eliminazione post lato cliente fallisce (nessun permess
 
 ## Task 4 — Verifica
 
-- [ ] Cliente Consulenza: vede `ContentGrid`, crea un post da tap su un giorno, lo modifica, lo elimina, lo invia all'SMM
-- [ ] Cliente Consulenza: può modificare (non eliminare stato, solo contenuto) un post anche dopo `SMM_APPROVED`; verificare che non possa comunque scrivere `status` direttamente
-- [ ] SMM in Consulenza: continua a vedere solo suggerimenti/modifica/approva durante `SMM_REVIEW`, nessuna regressione dal branch "creatore" aggiunto per il cliente
-- [ ] Cliente Gestione: nessuna regressione — tab Bozze non compare, `ClientPostDetailSheet` invariato
-- [ ] SMM Gestione: nessuna regressione dopo l'estrazione di `BrandPostsBoard`
-- [ ] RLS: un cliente non può eliminare/modificare un post di un brand che non è il suo, né un post Gestione, né scrivere `status = 'SMM_APPROVED'` partendo da un altro stato
-- [ ] Verifica su viewport mobile (emulazione iPhone 390×844, come da setup abituale)
+- [x] Cliente Consulenza: vede `ContentGrid`, crea un post da tap su un giorno, lo modifica, lo elimina, lo invia all'SMM
+- [x] Cliente Consulenza: può modificare (non eliminare stato, solo contenuto) un post anche dopo `SMM_APPROVED`; verificare che non possa comunque scrivere `status` direttamente
+- [x] SMM in Consulenza: continua a vedere solo suggerimenti/modifica/approva durante `SMM_REVIEW`, nessuna regressione dal branch "creatore" aggiunto per il cliente
+- [x] Cliente Gestione: nessuna regressione — tab Bozze non compare, `ClientPostDetailSheet` invariato
+- [x] SMM Gestione: nessuna regressione dopo l'estrazione di `BrandPostsBoard`
+- [x] RLS: un cliente non può eliminare/modificare un post di un brand che non è il suo, né un post Gestione, né scrivere `status = 'SMM_APPROVED'` partendo da un altro stato
+- [x] Verifica su viewport mobile (emulazione iPhone 390×844, come da setup abituale)
+
+Eseguita manualmente dall'utente (2026-07-08) — nessuna regressione riscontrata.

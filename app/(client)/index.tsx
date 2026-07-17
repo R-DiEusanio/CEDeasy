@@ -11,7 +11,7 @@ import { CheckCircle, Clock } from 'lucide-react-native'
 import type { BottomSheetModal } from '../../components/ui/BottomSheet'
 import { useClientPosts, useBrand } from '../../src/lib/queries'
 import { useAppStore } from '../../src/lib/app-store'
-import type { Post, PostStatus } from '../../src/lib/mock-data'
+import type { Post } from '../../src/lib/mock-data'
 import { PostCard } from '../../components/PostCard'
 import { ClientPostDetailSheet } from '../../components/ClientPostDetailSheet'
 import { BrandPostsBoard } from '../../components/BrandPostsBoard'
@@ -21,9 +21,14 @@ import { colors } from '../../constants/colors'
 import { spacing, radius } from '../../constants/spacing'
 import { typography } from '../../constants/typography'
 
-const FILTERS: { key: PostStatus; label: string }[] = [
-  { key: 'pending', label: 'Da approvare' },
-  { key: 'approved', label: 'Approvati' },
+// "Approvati" raggruppa tutti gli stati post-decisione (coerente con
+// APPROVED_LIKE in src/lib/supabase/posts.ts), non solo "approvato".
+type FilterKey = 'da_revisionare' | 'decisi'
+const DECIDED_STATUSES: Post['status'][] = ['approvato', 'programmato', 'pubblicato', 'rimandato']
+
+const FILTERS: { key: FilterKey; label: string }[] = [
+  { key: 'da_revisionare', label: 'Da approvare' },
+  { key: 'decisi', label: 'Approvati' },
 ]
 
 export default function ClientPostsScreen() {
@@ -48,11 +53,13 @@ export default function ClientPostsScreen() {
 // Flusso Gestione invariato: il cliente approva/richiede modifiche, non crea.
 function GestioneClientPosts() {
   const { data: allPosts, isLoading, refetch } = useClientPosts()
-  const [filter, setFilter] = useState<PostStatus>('pending')
+  const [filter, setFilter] = useState<FilterKey>('da_revisionare')
   const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const detailSheetRef = useRef<BottomSheetModal>(null)
 
-  const posts = allPosts?.filter((p) => p.status === filter) ?? []
+  const posts = allPosts?.filter((p) =>
+    filter === 'da_revisionare' ? p.status === 'da_revisionare' : DECIDED_STATUSES.includes(p.status)
+  ) ?? []
 
   const openPost = (post: Post) => {
     setSelectedPost(post)
@@ -90,7 +97,7 @@ function GestioneClientPosts() {
         </View>
       ) : !posts.length ? (
         <View style={styles.emptyWrap}>
-          {filter === 'pending' ? (
+          {filter === 'da_revisionare' ? (
             <EmptyState
               icon={Clock}
               title="Nessun post in attesa"

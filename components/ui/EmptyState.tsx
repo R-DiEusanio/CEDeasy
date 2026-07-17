@@ -5,7 +5,7 @@ import { spacing } from '../../constants/spacing'
 import { typography } from '../../constants/typography'
 
 interface EmptyStateProps {
-  icon: LucideIcon
+  icon?: LucideIcon
   title: string
   subtitle?: string
 }
@@ -13,9 +13,11 @@ interface EmptyStateProps {
 export function EmptyState({ icon: Icon, title, subtitle }: EmptyStateProps) {
   return (
     <View style={styles.container}>
-      <View style={styles.iconWrap}>
-        <Icon size={32} color={colors.text.muted} />
-      </View>
+      {!!Icon && (
+        <View style={styles.iconWrap}>
+          <Icon size={32} color={colors.text.muted} />
+        </View>
+      )}
       <Text style={styles.title}>{title}</Text>
       {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
     </View>

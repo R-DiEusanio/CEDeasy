@@ -6,6 +6,7 @@ import { Sheet } from './ui/BottomSheet'
 import { Button } from './ui/Button'
 import type { Post } from '../src/lib/mock-data'
 import type { ClientStats, ClientKPIs } from '../src/lib/supabase/posts'
+import { STATUS_CONFIG } from '../src/lib/status-config'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -25,7 +26,7 @@ const PERIOD_MONTHS: Record<Period, number> = {
 }
 
 interface ReportSheetProps {
-  sheetRef: React.RefObject<BottomSheetModal>
+  sheetRef: React.RefObject<BottomSheetModal | null>
   stats: ClientStats
   kpis: ClientKPIs
   posts: Post[]
@@ -39,11 +40,12 @@ function filterByPeriod(posts: Post[], period: Period): Post[] {
   return posts.filter((p) => new Date(p.date) >= from)
 }
 
+// Bucket "post-approvazione": approvato + programmato + pubblicato — coerente
+// con src/lib/supabase/posts.ts (APPROVED_LIKE)
+const APPROVED_LIKE: Post['status'][] = ['approvato', 'programmato', 'pubblicato']
+
 function statusLabel(post: Post): string {
-  if (post.hasChangesRequested) return 'Modifica richiesta'
-  if (post.status === 'approved')   return 'Approvato'
-  if (post.status === 'pending')    return 'In approvazione'
-  return 'Bozza'
+  return STATUS_CONFIG[post.status].label
 }
 
 function qualityText(rate: number): string {
@@ -83,7 +85,7 @@ function exportPDF(posts: Post[], stats: ClientStats, kpis: ClientKPIs, period: 
     return
   }
 
-  const approved = posts.filter((p) => p.status === 'approved').length
+  const approved = posts.filter((p) => APPROVED_LIKE.includes(p.status)).length
   const rate = posts.length > 0 ? Math.round((approved / posts.length) * 100) : 0
 
   const rows = posts.map((p) => `
@@ -161,7 +163,7 @@ function exportPDF(posts: Post[], stats: ClientStats, kpis: ClientKPIs, period: 
 export function ReportSheet({ sheetRef, stats, kpis, posts }: ReportSheetProps) {
   const [period, setPeriod] = useState<Period>('mese')
   const filtered = filterByPeriod(posts, period)
-  const approved = filtered.filter((p) => p.status === 'approved').length
+  const approved = filtered.filter((p) => APPROVED_LIKE.includes(p.status)).length
   const rate = filtered.length > 0 ? Math.round((approved / filtered.length) * 100) : 0
   const withFeedback = filtered.filter((p) => p.feedback).length
 

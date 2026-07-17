@@ -17,6 +17,15 @@ type DbBrand = {
   telegram_url: string | null;
   linkedin_url: string | null;
   work_mode: string;
+  color: string;
+  tone_of_voice: string | null;
+  obiettivo: string | null;
+  target: string | null;
+  posizionamento: string | null;
+  frequenza_pubblicazione: string | null;
+  canali_attivi: string[] | null;
+  hashtag_ricorrenti: string | null;
+  link_utili: string | null;
   created_at: string | null;
 };
 
@@ -49,6 +58,15 @@ function toBrand(row: DbBrand): Brand {
     telegramUrl:  row.telegram_url  ?? undefined,
     linkedinUrl:  row.linkedin_url  ?? undefined,
     workMode:     DB_TO_FRONTEND_WORK_MODE[row.work_mode] ?? "gestione",
+    color:        (row.color as Brand["color"]) ?? "orange",
+    toneOfVoice:            row.tone_of_voice ?? undefined,
+    obiettivo:              row.obiettivo ?? undefined,
+    target:                 row.target ?? undefined,
+    posizionamento:         row.posizionamento ?? undefined,
+    frequenzaPubblicazione: row.frequenza_pubblicazione ?? undefined,
+    canaliAttivi:           (row.canali_attivi as Brand["canaliAttivi"]) ?? undefined,
+    hashtagRicorrenti:      row.hashtag_ricorrenti ?? undefined,
+    linkUtili:              row.link_utili ?? undefined,
   };
 }
 
@@ -66,6 +84,15 @@ function toDbInsert(dto: Omit<Brand, "id">): Omit<DbBrand, "id" | "created_at"> 
     telegram_url: dto.telegramUrl  ?? null,
     linkedin_url: dto.linkedinUrl  ?? null,
     work_mode:    FRONTEND_TO_DB_WORK_MODE[dto.workMode],
+    color:        dto.color,
+    tone_of_voice:           dto.toneOfVoice            ?? null,
+    obiettivo:               dto.obiettivo              ?? null,
+    target:                  dto.target                 ?? null,
+    posizionamento:          dto.posizionamento         ?? null,
+    frequenza_pubblicazione: dto.frequenzaPubblicazione ?? null,
+    canali_attivi:           dto.canaliAttivi            ?? null,
+    hashtag_ricorrenti:      dto.hashtagRicorrenti      ?? null,
+    link_utili:              dto.linkUtili              ?? null,
   };
 }
 
@@ -123,8 +150,18 @@ export async function updateBrand(id: string, dto: Partial<Brand>): Promise<Bran
   if (dto.facebookUrl  !== undefined) patch.facebook_url  = dto.facebookUrl  ?? null;
   if (dto.telegramUrl  !== undefined) patch.telegram_url  = dto.telegramUrl  ?? null;
   if (dto.linkedinUrl  !== undefined) patch.linkedin_url  = dto.linkedinUrl  ?? null;
+  if (dto.color        !== undefined) patch.color         = dto.color;
   // Cambio Gestione↔Consulenza: scelta esclusiva dello SMM, in qualsiasi momento (Task 1.2)
   if (dto.workMode     !== undefined) patch.work_mode     = FRONTEND_TO_DB_WORK_MODE[dto.workMode];
+  // Scheda Strategia (Task 9) — SMM-only, vedi trigger prevent_client_brand_field_change
+  if (dto.toneOfVoice            !== undefined) patch.tone_of_voice           = dto.toneOfVoice            ?? null;
+  if (dto.obiettivo               !== undefined) patch.obiettivo              = dto.obiettivo               ?? null;
+  if (dto.target                  !== undefined) patch.target                 = dto.target                 ?? null;
+  if (dto.posizionamento          !== undefined) patch.posizionamento         = dto.posizionamento          ?? null;
+  if (dto.frequenzaPubblicazione !== undefined) patch.frequenza_pubblicazione = dto.frequenzaPubblicazione ?? null;
+  if (dto.canaliAttivi            !== undefined) patch.canali_attivi          = dto.canaliAttivi            ?? null;
+  if (dto.hashtagRicorrenti      !== undefined) patch.hashtag_ricorrenti      = dto.hashtagRicorrenti      ?? null;
+  if (dto.linkUtili              !== undefined) patch.link_utili              = dto.linkUtili              ?? null;
 
   const { data, error } = await supabase
     .from("brands")

@@ -1,24 +1,36 @@
 import { Tabs } from 'expo-router'
-import { Home, Users, User } from 'lucide-react-native'
-
-const PRIMARY = '#7c3aed'
-const MUTED = '#94a3b8'
+import { LayoutGrid, Grid3x3, Users, BarChart3, CalendarDays } from 'lucide-react-native'
+import { colors } from '../../constants/colors'
 
 export default function SmmLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: PRIMARY,
-        tabBarInactiveTintColor: MUTED,
-        tabBarStyle: { borderTopColor: '#e2e8f0' },
+        tabBarActiveTintColor: colors.primary,
+        tabBarInactiveTintColor: colors.text.muted,
+        tabBarStyle: { borderTopColor: colors.border },
       }}
     >
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Feed',
-          tabBarIcon: ({ color, size }) => <Home color={color} size={size} />,
+          title: 'Dashboard',
+          tabBarIcon: ({ color, size }) => <LayoutGrid color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="calendario"
+        options={{
+          title: 'Calendario',
+          tabBarIcon: ({ color, size }) => <CalendarDays color={color} size={size} />,
+        }}
+      />
+      <Tabs.Screen
+        name="griglia"
+        options={{
+          title: 'Griglia',
+          tabBarIcon: ({ color, size }) => <Grid3x3 color={color} size={size} />,
         }}
       />
       <Tabs.Screen
@@ -29,12 +41,16 @@ export default function SmmLayout() {
         }}
       />
       <Tabs.Screen
-        name="profile"
+        name="report"
         options={{
-          title: 'Profilo',
-          tabBarIcon: ({ color, size }) => <User color={color} size={size} />,
+          title: 'Report',
+          tabBarIcon: ({ color, size }) => <BarChart3 color={color} size={size} />,
         }}
       />
+      {/* Non è più una tab (era la terza voce): resta navigabile via icona profilo
+          nell'header globale (SmmHeader), href:null la nasconde dalla tab bar
+          senza rimuovere la rotta. */}
+      <Tabs.Screen name="profile" options={{ href: null }} />
     </Tabs>
   )
 }

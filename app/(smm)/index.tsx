@@ -1,29 +1,27 @@
-import { useEffect, useState } from 'react'
-import { ScrollView, RefreshControl, StyleSheet, Text, View, Pressable } from 'react-native'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import { useRouter } from 'expo-router'
-import { Activity as ActivityIcon, Bell } from 'lucide-react-native'
-import { useRecentActivities, useRecentPosts } from '../../src/lib/queries'
+import type { Post } from '../../src/lib/mock-data'
+import { usePosts, useAllPosts } from '../../src/lib/queries'
 import { useAppStore } from '../../src/lib/app-store'
-import type { SmmMode } from '../../src/lib/app-store'
-import { ActivityCard } from '../../components/ActivityCard'
+import { STATUS_CONFIG, STATUS_ORDER } from '../../src/lib/status-config'
 import { PostCard } from '../../components/PostCard'
-import { EmptyState } from '../../components/ui/EmptyState'
+import { PostDetailSheet } from '../../components/PostDetailSheet'
+import { SmmHeader } from '../../components/SmmHeader'
+import type { BottomSheetModal } from '../../components/ui/BottomSheet'
 import { SkeletonCard } from '../../components/ui/SkeletonLoader'
 import { OnboardingModal, ONBOARDING_KEY } from '../../components/OnboardingModal'
 import { colors } from '../../constants/colors'
-import { spacing, radius } from '../../constants/spacing'
+import { radius, spacing } from '../../constants/spacing'
 import { typography } from '../../constants/typography'
 
-const MODES: { value: SmmMode; label: string }[] = [
-  { value: 'consulenza', label: 'Consulenza' },
-  { value: 'gestione',   label: 'Gestione'   },
-]
+const COLUMN_WIDTH = 260
 
 export default function SmmDashboardScreen() {
-  const { userId, smmMode, setSmmMode } = useAppStore()
-  const router = useRouter()
+  const { userId, smmMode, selectedBrandId } = useAppStore()
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
+  const detailSheetRef = useRef<BottomSheetModal>(null)
 
   useEffect(() => {
     AsyncStorage.getItem(ONBOARDING_KEY).then((done) => {
@@ -31,23 +29,25 @@ export default function SmmDashboardScreen() {
     })
   }, [])
 
-  const {
-    data: activities,
-    isLoading: loadingActivities,
-    refetch: refetchActivities,
-  } = useRecentActivities()
-  const {
-    data: recentPosts,
-    isLoading: loadingPosts,
-    refetch: refetchPosts,
-  } = useRecentPosts(userId)
+  const singleBrandQuery = usePosts(selectedBrandId)
+  const allBrandsQuery = useAllPosts(userId)
+  const { data: posts, isLoading, refetch } = selectedBrandId ? singleBrandQuery : allBrandsQuery
 
-  // Filtro reale per la tab attiva — prima smmMode era solo cosmetico
-  const filteredActivities = activities?.filter((a) => a.workMode === smmMode)
-  const filteredPosts = recentPosts?.filter((p) => p.workMode === smmMode)
+  const filteredPosts = useMemo(
+    () => (posts ?? []).filter((p) => p.workMode === smmMode),
+    [posts, smmMode]
+  )
 
-  const onRefresh = async () => {
-    await Promise.all([refetchActivities(), refetchPosts()])
+  const columns = useMemo(() => {
+    const byStatus = new Map<string, Post[]>()
+    for (const status of STATUS_ORDER) byStatus.set(status, [])
+    for (const post of filteredPosts) byStatus.get(post.status)?.push(post)
+    return STATUS_ORDER.map((status) => ({ status, posts: byStatus.get(status) ?? [] }))
+  }, [filteredPosts])
+
+  const openPost = (post: Post) => {
+    setSelectedPost(post)
+    detailSheetRef.current?.present()
   }
 
   return (
@@ -56,132 +56,106 @@ export default function SmmDashboardScreen() {
       visible={showOnboarding}
       onDone={() => setShowOnboarding(false)}
     />
-    <ScrollView
-      style={styles.screen}
-      contentContainerStyle={styles.content}
-      refreshControl={
-        <RefreshControl
-          refreshing={false}
-          onRefresh={onRefresh}
-          tintColor={colors.primary}
-        />
-      }
-    >
+    <View style={styles.screen}>
+      <SmmHeader />
       <Text style={styles.heading}>Dashboard</Text>
+      <Text style={styles.subheading}>Trascina i post da uno stato all'altro</Text>
 
-      {/* Switch Consulenza / Gestione */}
-      <View style={styles.modeSwitch}>
-        {MODES.map((mode) => {
-          const active = smmMode === mode.value
-          return (
-            <Pressable
-              key={mode.value}
-              style={[styles.modeBtn, active && styles.modeBtnActive]}
-              onPress={() => setSmmMode(mode.value)}
-            >
-              <Text style={[styles.modeBtnLabel, active && styles.modeBtnLabelActive]}>
-                {mode.label}
-              </Text>
-            </Pressable>
-          )
-        })}
-      </View>
+      {isLoading ? (
+        <View style={styles.skeletons}>
+          <SkeletonCard />
+          <SkeletonCard />
+        </View>
+      ) : (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.board}
+          refreshControl={
+            <RefreshControl refreshing={false} onRefresh={refetch} tintColor={colors.primary} />
+          }
+        >
+          {columns.map(({ status, posts: columnPosts }) => {
+            const cfg = STATUS_CONFIG[status]
+            return (
+              <View key={status} style={styles.column}>
+                <View style={styles.columnHeader}>
+                  <View style={styles.columnTitleRow}>
+                    <View style={[styles.columnDot, { backgroundColor: cfg.dotColor }]} />
+                    <Text style={styles.columnTitle}>{cfg.label}</Text>
+                  </View>
+                  <View style={[styles.countBadge, { backgroundColor: cfg.badgeColor }]}>
+                    <Text style={[styles.countText, { color: cfg.badgeTextColor }]}>
+                      {columnPosts.length}
+                    </Text>
+                  </View>
+                </View>
 
-      {/* Attività recenti */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Attività recenti</Text>
-        {loadingActivities ? (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
-        ) : !filteredActivities?.length ? (
-          <EmptyState
-            icon={ActivityIcon}
-            title="Nessuna attività"
-            subtitle="Le azioni dei tuoi clienti appariranno qui"
-          />
-        ) : (
-          <View style={styles.list}>
-            {filteredActivities.map((a) => (
-              <ActivityCard
-                key={a.id}
-                activity={a}
-                onPress={() => router.push(`/(smm)/brands/${a.brandId}?openPostId=${a.id}`)}
-              />
-            ))}
-          </View>
-        )}
-      </View>
+                <ScrollView style={styles.columnList} contentContainerStyle={styles.columnListContent}>
+                  {columnPosts.length === 0 ? (
+                    <Text style={styles.emptyColumn}>Nessun post</Text>
+                  ) : (
+                    columnPosts.map((post) => (
+                      <PostCard key={post.id} post={post} onPress={() => openPost(post)} />
+                    ))
+                  )}
+                </ScrollView>
+              </View>
+            )
+          })}
+        </ScrollView>
+      )}
+    </View>
 
-      {/* Post recenti */}
-      <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Post recenti</Text>
-        {loadingPosts ? (
-          <>
-            <SkeletonCard />
-            <SkeletonCard />
-          </>
-        ) : !filteredPosts?.length ? (
-          <EmptyState
-            icon={Bell}
-            title="Nessun post recente"
-            subtitle="I post che hai creato appariranno qui"
-          />
-        ) : (
-          <View style={styles.list}>
-            {filteredPosts.map((p) => (
-              <PostCard key={p.id} post={p} />
-            ))}
-          </View>
-        )}
-      </View>
-    </ScrollView>
+    <PostDetailSheet sheetRef={detailSheetRef} post={selectedPost} />
     </>
   )
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: {
-    padding: spacing.lg,
-    paddingTop: 60,
-    paddingBottom: spacing['3xl'],
-    gap: spacing.xl,
+  heading: { ...typography.displayHeading, color: colors.text.primary, paddingHorizontal: spacing.lg },
+  subheading: {
+    ...typography.body,
+    color: colors.text.secondary,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
   },
-  heading: { ...typography.h1, color: colors.text.primary },
+  skeletons: { padding: spacing.lg, gap: spacing.sm },
 
-  // mode switch
-  modeSwitch: {
-    flexDirection: 'row',
-    backgroundColor: colors.input,
+  board: { paddingHorizontal: spacing.lg, paddingBottom: spacing['3xl'], gap: spacing.md },
+  column: {
+    width: COLUMN_WIDTH,
+    backgroundColor: colors.card,
     borderRadius: radius.lg,
-    padding: 3,
+    padding: spacing.sm,
+    maxHeight: '100%',
   },
-  modeBtn: {
-    flex: 1,
-    paddingVertical: spacing.sm,
+  columnHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: radius.md,
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.sm,
   },
-  modeBtnActive: {
-    backgroundColor: colors.background,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
+  columnTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexShrink: 1 },
+  columnDot: { width: 8, height: 8, borderRadius: 4 },
+  columnTitle: { ...typography.smallMedium, color: colors.text.primary },
+  countBadge: {
+    minWidth: 22,
+    height: 22,
+    borderRadius: radius.full,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 6,
   },
-  modeBtnLabel: {
-    ...typography.smallMedium,
+  countText: { ...typography.caption, fontWeight: '700' },
+  columnList: { flexGrow: 0 },
+  columnListContent: { gap: spacing.sm, paddingBottom: spacing.sm },
+  emptyColumn: {
+    ...typography.small,
     color: colors.text.muted,
+    textAlign: 'center',
+    paddingVertical: spacing.lg,
   },
-  modeBtnLabelActive: {
-    color: colors.primary,
-    fontWeight: '700',
-  },
-
-  section: { gap: spacing.md },
-  sectionTitle: { ...typography.h3, color: colors.text.primary },
-  list: { gap: spacing.sm },
 })

@@ -5,7 +5,6 @@ import * as Haptics from 'expo-haptics'
 import Toast from 'react-native-toast-message'
 import type { BottomSheetModal } from './ui/BottomSheet'
 import type { Post } from '../src/lib/mock-data'
-import { getVisualStatus } from '../src/lib/status-config'
 import { useUpdatePostStatus } from '../src/lib/queries'
 import { Sheet } from './ui/BottomSheet'
 import { Badge } from './ui/Badge'
@@ -17,7 +16,7 @@ import { typography } from '../constants/typography'
 import { formatScheduledDate, formatScheduledTime } from '../src/lib/utils'
 
 interface ClientPostDetailSheetProps {
-  sheetRef: React.RefObject<BottomSheetModal>
+  sheetRef: React.RefObject<BottomSheetModal | null>
   post: Post | null
 }
 
@@ -36,11 +35,11 @@ export function ClientPostDetailSheet({ sheetRef, post }: ClientPostDetailSheetP
 
   if (!post) return null
 
-  const visualStatus = getVisualStatus(post.status, post.hasChangesRequested)
+  const visualStatus = post.status
 
   const handleApprove = async () => {
     try {
-      await updateStatus({ id: post.id, status: 'approved', brandId: post.brandId })
+      await updateStatus({ id: post.id, status: 'approvato', brandId: post.brandId })
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
       Toast.show({ type: 'success', text1: 'Post approvato!' })
       resetState()
@@ -58,7 +57,7 @@ export function ClientPostDetailSheet({ sheetRef, post }: ClientPostDetailSheetP
     try {
       await updateStatus({
         id: post.id,
-        status: 'revision_requested',
+        status: 'da_modificare',
         brandId: post.brandId,
         feedback: feedback.trim(),
       })
@@ -111,7 +110,7 @@ export function ClientPostDetailSheet({ sheetRef, post }: ClientPostDetailSheetP
         )}
 
         {/* Azioni cliente */}
-        {visualStatus === 'pending' && (
+        {visualStatus === 'da_revisionare' && (
           requestingChange ? (
             <View style={styles.actions}>
               <Text style={styles.feedbackTitle}>Scrivi il tuo feedback</Text>

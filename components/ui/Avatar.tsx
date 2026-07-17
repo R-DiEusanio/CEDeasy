@@ -7,13 +7,16 @@ interface AvatarProps {
   name: string
   id?: string
   size?: number
+  // Colore esplicito (hex, es. da BRAND_COLOR_HEX) — se assente, ricade sul
+  // colore deterministico calcolato dall'id (comportamento pre-esistente).
+  color?: string
 }
 
-export function Avatar({ name, id = name, size = 40 }: AvatarProps) {
+export function Avatar({ name, id = name, size = 40, color }: AvatarProps) {
   const initials = getBrandInitials(name)
   const hue = getBrandHue(id)
-  const bg = `hsl(${hue}, 60%, 88%)`
-  const textColor = `hsl(${hue}, 55%, 30%)`
+  const bg = color ? `${color}33` : `hsl(${hue}, 60%, 88%)`
+  const textColor = color ?? `hsl(${hue}, 55%, 30%)`
 
   return (
     <View

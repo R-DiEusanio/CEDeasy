@@ -1,7 +1,6 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { Image, Film, LayoutGrid, Zap, User } from 'lucide-react-native'
 import type { Post } from '../src/lib/mock-data'
-import { getVisualStatus } from '../src/lib/status-config'
 import { Badge } from './ui/Badge'
 import { Card } from './ui/Card'
 import { colors } from '../constants/colors'
@@ -23,8 +22,7 @@ interface PostCardProps {
 
 export function PostCard({ post, onPress }: PostCardProps) {
   const { Icon, color } = TYPE_ICON[post.type] ?? TYPE_ICON['Post']
-  const visualStatus = getVisualStatus(post.status, post.hasChangesRequested)
-  const awaitingSmmReview = post.workMode === 'consulenza' && visualStatus === 'pending'
+  const awaitingSmmReview = post.workMode === 'consulenza' && post.status === 'da_revisionare'
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.7 }}>
@@ -60,7 +58,7 @@ export function PostCard({ post, onPress }: PostCardProps) {
         {/* Riga inferiore: data + badge */}
         <View style={styles.bottomRow}>
           <Text style={styles.date}>{formatScheduledDate(post.date)}</Text>
-          <Badge status={visualStatus} />
+          <Badge status={post.status} />
         </View>
       </Card>
     </Pressable>

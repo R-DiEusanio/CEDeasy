@@ -134,6 +134,14 @@ export default function LoginScreen() {
             <Text style={styles.link}> Registrati</Text>
           </Pressable>
         </View>
+
+        {/* Sei un cliente invitato? */}
+        <View style={styles.footer}>
+          <Text style={styles.footerText}>Hai ricevuto un invito da un cliente?</Text>
+          <Pressable onPress={() => router.push('/(auth)/join')}>
+            <Text style={styles.link}> Ho un codice</Text>
+          </Pressable>
+        </View>
       </ScrollView>
     </KeyboardAvoidingView>
   )

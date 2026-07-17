@@ -156,8 +156,10 @@ Senza la policy `brands_client_update`, il salvataggio dei contatti fallirà con
 
 ## Task 5 — Verifica
 
-- [ ] Test manuale SMM: modifica nome, salva, verifica persistenza dopo reload
-- [ ] Test manuale Cliente: naviga alla nuova tab Profilo, modifica un contatto brand, verifica persistenza
-- [ ] Verifica che un cliente non possa modificare `role`, `brand_id`, o il profilo di un altro utente (test RLS)
-- [ ] Verifica che un cliente non possa modificare `name`/`category` del brand dall'app (limite applicativo)
-- [ ] Verifica su viewport mobile (come da setup abituale, emulazione iPhone 390×844)
+- [x] Test manuale SMM: modifica nome, salva, verifica persistenza dopo reload
+- [x] Test manuale Cliente: naviga alla nuova tab Profilo, modifica un contatto brand, verifica persistenza
+- [x] Verifica che un cliente non possa modificare `role`, `brand_id`, o il profilo di un altro utente (test RLS)
+- [x] Verifica che un cliente non possa modificare `name`/`category` del brand dall'app (limite applicativo)
+- [x] Verifica su viewport mobile (come da setup abituale, emulazione iPhone 390×844)
+
+Eseguita manualmente dall'utente (2026-07-08) — nessuna regressione riscontrata.

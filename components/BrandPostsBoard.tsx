@@ -120,7 +120,7 @@ export function BrandPostsBoard({ brandId, workMode, openPostId }: BrandPostsBoa
         </Pressable>
       )}
 
-      <CreatePostSheet sheetRef={createSheetRef} brandId={brandId} defaultDate={defaultDate} />
+      <CreatePostSheet sheetRef={createSheetRef} defaultBrandId={brandId} defaultDate={defaultDate} />
       <PostDetailSheet sheetRef={detailSheetRef} post={selectedPost} />
     </View>
   )

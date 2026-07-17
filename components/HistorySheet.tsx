@@ -13,7 +13,7 @@ import { typography } from '../constants/typography'
 // ─── Tipi ─────────────────────────────────────────────────────────────────────
 
 interface HistorySheetProps {
-  sheetRef: React.RefObject<BottomSheetModal>
+  sheetRef: React.RefObject<BottomSheetModal | null>
   comparison: ClientComparison
   posts: Post[]
 }
@@ -142,7 +142,7 @@ function downloadMonthCSV(m: MonthSummary, posts: Post[]) {
   const mp = postsForMonth(posts, m)
   const header = 'Titolo,Tipo,Data,Approvato,Feedback\n'
   const rows = mp.map((p) => {
-    const approved = p.status === 'approved' ? 'Sì' : 'No'
+    const approved = ['approvato', 'programmato', 'pubblicato'].includes(p.status) ? 'Sì' : 'No'
     return `"${p.title}","${p.type}","${p.date.split('T')[0]}","${approved}","${p.feedback ? 'Sì' : 'No'}"`
   }).join('\n')
   const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })

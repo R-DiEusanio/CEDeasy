@@ -1,5 +1,5 @@
 import { supabase } from "../supabase";
-import type { Post } from "../mock-data";
+import type { Post, PostStatus } from "../mock-data";
 
 // ─── DB row shape ─────────────────────────────────────────────────────────────
 
@@ -9,6 +9,7 @@ type DbPost = {
   title: string;
   content: string | null;
   platform: string;
+  channel: string;
   media_link: string | null;
   scheduled_date: string;        // "YYYY-MM-DD"
   scheduled_time: string | null; // "HH:mm:ss"
@@ -22,32 +23,13 @@ type DbPost = {
   brands?: { name: string } | null;
 };
 
-// ─── Semaforo: mapping bidirezionale DB ↔ frontend ───────────────────────────
-//
-//  DB (uppercase)       Frontend Post           Semaforo
-//  -- Gestione (SMM crea, cliente approva) --
-//  PENDING            → { draft,    false }   🔴 bozza privata (mai vista dal cliente)
-//  DRAFT              → { draft,    false }   🔴 bozza privata (mai vista dal cliente)
-//  REVISION_REQUESTED → { pending,  false }   🟡 inviato al cliente, attesa risposta
-//  CHANGES_REQUESTED  → { draft,    true  }   🔴⚠ cliente ha richiesto modifiche
-//  APPROVED           → { approved, false }   🟢 approvato
-//  PUBLISHED          → { approved, false }   🟢 pubblicato
-//  -- Consulenza (cliente crea, SMM suggerisce/modifica/approva) --
-//  CLIENT_DRAFT       → { draft,    false }   🔴 bozza del cliente, non ancora inviata all'SMM
-//  SMM_REVIEW         → { pending,  false }   🟡 in revisione SMM (suggerimenti/modifiche in corso)
-//  SMM_APPROVED       → { approved, false }   🟢 approvato dall'SMM
-
-const DB_TO_FRONTEND: Record<string, Pick<Post, "status" | "hasChangesRequested">> = {
-  PENDING:             { status: "draft",    hasChangesRequested: false },
-  DRAFT:               { status: "draft",    hasChangesRequested: false },
-  REVISION_REQUESTED:  { status: "pending",  hasChangesRequested: false },
-  CHANGES_REQUESTED:   { status: "draft",    hasChangesRequested: true },
-  APPROVED:            { status: "approved", hasChangesRequested: false },
-  PUBLISHED:           { status: "approved", hasChangesRequested: false },
-  CLIENT_DRAFT:        { status: "draft",    hasChangesRequested: false },
-  SMM_REVIEW:          { status: "pending",  hasChangesRequested: false },
-  SMM_APPROVED:        { status: "approved", hasChangesRequested: false },
-};
+// ─── Stato: identico DB ↔ frontend ────────────────────────────────────────────
+// Un solo enum condiviso (vedi PostStatus in mock-data.ts): 'da_fare' |
+// 'bozza_privata' | 'da_revisionare' | 'da_modificare' | 'approvato' |
+// 'programmato' | 'pubblicato' | 'rimandato'. Nessuna traduzione DB↔frontend
+// necessaria — chi può scrivere quale stato è deciso da RLS/trigger lato DB
+// (lo SMM liberamente, il cliente solo lungo transizioni specifiche in base al
+// work_mode del post), non da un mapping diverso per Gestione/Consulenza qui.
 
 // ─── work_mode: mapping bidirezionale DB ↔ frontend ──────────────────────────
 
@@ -61,39 +43,9 @@ const FRONTEND_TO_DB_WORK_MODE: Record<Post["workMode"], string> = {
   consulenza: "CONSULTANCY",
 };
 
-// Mapping per updatePostStatus() — lo status che i componenti mandano corrisponde
-// all'AZIONE eseguita, non al valore DB da scrivere. Dipende dal work_mode del post:
-// la stessa azione generica ("pending" = invia per revisione, "approved" = approva)
-// scrive un valore DB diverso a seconda del flusso.
-//
-// -- Gestione (SMM crea, cliente approva) --
-//  "pending"            → REVISION_REQUESTED   SMM "Invia al cliente"      🔴→🟡
-//  "approved"           → APPROVED             Cliente approva              →🟢
-//  "revision_requested" → CHANGES_REQUESTED    Cliente "Richiedi mod."      🟡→🔴⚠
-//  "draft"              → PENDING              SMM reset a bozza privata    →🔴
-const FRONTEND_STATUS_TO_DB_GESTIONE: Record<string, string> = {
-  pending:             "REVISION_REQUESTED",
-  approved:            "APPROVED",
-  revision_requested:  "CHANGES_REQUESTED",
-  draft:               "PENDING",
-};
-
-// -- Consulenza (cliente crea, SMM suggerisce/modifica/approva) --
-//  "pending"  → SMM_REVIEW     Cliente "Invia all'SMM"   🔴→🟡
-//  "approved" → SMM_APPROVED   SMM approva                →🟢
-//  "draft"    → CLIENT_DRAFT   Reset a bozza cliente       →🔴
-// Nessun equivalente di "revision_requested": in Consulenza l'SMM non rimanda
-// il post al cliente, lo modifica direttamente (vedi Task 2.1).
-const FRONTEND_STATUS_TO_DB_CONSULTANCY: Record<string, string> = {
-  pending:  "SMM_REVIEW",
-  approved: "SMM_APPROVED",
-  draft:    "CLIENT_DRAFT",
-};
-
 // ─── Converters ───────────────────────────────────────────────────────────────
 
 function toPost(row: DbPost): Post {
-  const mapped = DB_TO_FRONTEND[row.status] ?? { status: "draft" as const, hasChangesRequested: false };
   return {
     id:                  row.id,
     brandId:             row.brand_id,
@@ -101,11 +53,11 @@ function toPost(row: DbPost): Post {
     title:               row.title,
     caption:             row.content ?? "",
     type:                (row.platform as Post["type"]) ?? "Post",
+    channel:             (row.channel as Post["channel"]) ?? "instagram",
     date:                row.scheduled_time
                            ? `${row.scheduled_date}T${row.scheduled_time}`
                            : `${row.scheduled_date}T00:00:00`,
-    status:              mapped.status,
-    hasChangesRequested: mapped.hasChangesRequested,
+    status:              (row.status as PostStatus) ?? "bozza_privata",
     workMode:            DB_TO_FRONTEND_WORK_MODE[row.work_mode ?? "FULL_MANAGEMENT"] ?? "gestione",
     feedback:            row.feedback ?? undefined,
     mediaLink:           row.media_link ?? undefined,
@@ -124,25 +76,28 @@ function splitDateTime(date: string): [string, string | undefined] {
 // (createPost), non hardcodato — un post creato dallo SMM eredita la modalità
 // in cui si trova il brand in quel momento.
 function postToDbInsert(
-  dto: Omit<Post, "id" | "hasChangesRequested" | "workMode">,
+  dto: Omit<Post, "id" | "workMode">,
   workMode: string,
+  createdBy: string | null,
 ): Omit<DbPost, "id"> {
   const [datePart, timePart] = splitDateTime(dto.date);
   const now = new Date().toISOString();
   return {
-    brand_id:       dto.brandId,
-    title:          dto.title,
-    content:        dto.caption || null,
-    platform:       dto.type,
-    media_link:     dto.mediaLink ?? null,
-    scheduled_date: datePart,
-    scheduled_time: timePart ?? null,
-    status:         "PENDING",         // nuovi post sempre bozza privata 🔴
-    work_mode:      workMode,
-    internal_notes: dto.internalNotes ?? null,
-    feedback:       null,
-    created_at:     now,
-    updated_at:     now,
+    brand_id:        dto.brandId,
+    title:           dto.title,
+    content:         dto.caption || null,
+    platform:        dto.type,
+    channel:         dto.channel,
+    media_link:      dto.mediaLink ?? null,
+    scheduled_date:  datePart,
+    scheduled_time:  timePart ?? null,
+    status:          "bozza_privata",   // nuovi post sempre bozza privata 🔴
+    work_mode:       workMode,
+    internal_notes:  dto.internalNotes ?? null,
+    feedback:        null,
+    created_at:      now,
+    updated_at:      now,
+    last_updated_by: createdBy,
   };
 }
 
@@ -154,6 +109,19 @@ export async function getPosts(brandId: string): Promise<Post[]> {
     .from("posts")
     .select("*")
     .eq("brand_id", brandId)
+    .order("scheduled_date", { ascending: true });
+
+  if (error) throw new Error(error.message);
+  return (data as DbPost[]).map(toPost);
+}
+
+// Vista SMM aggregata "Tutti i clienti" (Dashboard kanban, Calendario, Griglia):
+// tutti i post di tutti i brand dello SMM, la RLS posts_smm_full fa già il filtro
+// per proprietario — nessun brandId da passare, a differenza di getPosts().
+export async function getAllPosts(): Promise<Post[]> {
+  const { data, error } = await supabase
+    .from("posts")
+    .select("*, brands(name)")
     .order("scheduled_date", { ascending: true });
 
   if (error) throw new Error(error.message);
@@ -183,13 +151,17 @@ export async function getClientPosts(): Promise<Post[]> {
   return (data as DbPost[]).map(toPost);
 }
 
+// Bucket "post-approvazione": approvato + programmato + pubblicato, coerente
+// con come il cliente vede la propria tab "Approvati" (vedi app/(client)/index.tsx)
+const APPROVED_LIKE = ["approvato", "programmato", "pubblicato"];
+
 // Statistiche dashboard cliente
 export interface ClientStats {
   brandName: string;
   total: number;
-  pending: number;          // REVISION_REQUESTED — in approvazione
-  changesRequested: number; // CHANGES_REQUESTED  — modifica richiesta
-  approved: number;         // APPROVED + PUBLISHED
+  pending: number;          // da_revisionare — in approvazione
+  changesRequested: number; // da_modificare  — modifica richiesta
+  approved: number;         // approvato + programmato + pubblicato
   month: string;            // "Luglio 2026"
 }
 
@@ -217,11 +189,9 @@ export async function getClientStats(): Promise<ClientStats> {
   return {
     brandName:        (brandData as any)?.name ?? "",
     total:            rows.length,
-    // "pending"/"approved" coprono anche gli equivalenti Consulenza (SMM_REVIEW/SMM_APPROVED)
-    // — CHANGES_REQUESTED non ha un equivalente in Consulenza (Task 2.1), resta solo Gestione.
-    pending:          rows.filter((r) => r.status === "REVISION_REQUESTED" || r.status === "SMM_REVIEW").length,
-    changesRequested: rows.filter((r) => r.status === "CHANGES_REQUESTED").length,
-    approved:         rows.filter((r) => r.status === "APPROVED" || r.status === "PUBLISHED" || r.status === "SMM_APPROVED").length,
+    pending:          rows.filter((r) => r.status === "da_revisionare").length,
+    changesRequested: rows.filter((r) => r.status === "da_modificare").length,
+    approved:         rows.filter((r) => APPROVED_LIKE.includes(r.status)).length,
     month:            month.charAt(0).toUpperCase() + month.slice(1),
   };
 }
@@ -261,8 +231,8 @@ export async function getClientKPIs(): Promise<ClientKPIs> {
     scheduled_date: string;
   }[];
 
-  // Tempo medio approvazione (giorni) — include anche SMM_APPROVED (Consulenza)
-  const approvedRows = rows.filter((r) => r.status === "APPROVED" || r.status === "PUBLISHED" || r.status === "SMM_APPROVED");
+  // Tempo medio approvazione (giorni)
+  const approvedRows = rows.filter((r) => APPROVED_LIKE.includes(r.status));
   let avgApprovalDays: number | null = null;
   if (approvedRows.length > 0) {
     const diffs = approvedRows
@@ -365,7 +335,7 @@ export async function getClientComparison(): Promise<ClientComparison> {
       return rd.getFullYear() === y && rd.getMonth() === m;
     });
     const total = monthRows.length;
-    const approved = monthRows.filter((r) => r.status === "APPROVED" || r.status === "PUBLISHED" || r.status === "SMM_APPROVED").length;
+    const approved = monthRows.filter((r) => APPROVED_LIKE.includes(r.status)).length;
     const withFeedback = monthRows.filter((r) => r.feedback).length;
     const lbl = d.toLocaleDateString("it-IT", { month: "long", year: "numeric" });
     return {
@@ -483,18 +453,19 @@ function toActivity(row: DbPost, currentUserId: string | null): Activity {
     ? actionByMe ? `Hai modificato il post "${row.title}"` : `Il cliente ha modificato "${row.title}"`
     : actionByMe ? `Hai caricato un nuovo ${row.platform}` : `Il cliente ha caricato un nuovo ${row.platform}`;
 
-  if (row.status === "APPROVED" || row.status === "PUBLISHED" || row.status === "SMM_APPROVED") {
+  if (APPROVED_LIKE.includes(row.status)) {
     type = "approved";
     message = actionByMe
       ? `Hai approvato "${row.title}"`
       : `Il cliente ha approvato "${row.title}"`;
-  } else if (row.status === "CHANGES_REQUESTED") {
+  } else if (row.status === "da_modificare") {
     type = "revision_requested";
     message = actionByMe
       ? `Modifica inviata per "${row.title}"`
       : `Il cliente ha richiesto modifiche su "${row.title}"`;
-  } else if (row.status === "SMM_REVIEW") {
-    // Unico modo di arrivare a SMM_REVIEW è l'azione "Invia all'SMM" del cliente (Task 5.2)
+  } else if (row.status === "da_revisionare" && row.work_mode === "CONSULTANCY") {
+    // In Consulenza, l'unico modo di arrivare a "da_revisionare" è il cliente
+    // che invia la propria bozza all'SMM per la revisione.
     type = "client_proposed";
     message = `Il cliente ha proposto "${row.title}" da rivedere`;
   }
@@ -512,8 +483,8 @@ function toActivity(row: DbPost, currentUserId: string | null): Activity {
 }
 
 // Attività recenti: ultimi 7 giorni, ordinati per updated_at descending.
-// Esclude CLIENT_DRAFT: il cliente non ha ancora inviato il post, non c'è
-// niente su cui lo SMM debba agire — evita rumore prima dell'invio.
+// Esclude bozza_privata: nessuno ha ancora agito su un post ancora privato,
+// non c'è niente su cui lo SMM debba agire — evita rumore prima dell'invio.
 export async function getRecentActivities(): Promise<Activity[]> {
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -524,7 +495,7 @@ export async function getRecentActivities(): Promise<Activity[]> {
     .from("posts")
     .select("*, brands(name)")
     .gte("updated_at", sevenDaysAgo.toISOString())
-    .neq("status", "CLIENT_DRAFT")
+    .neq("status", "bozza_privata")
     .order("updated_at", { ascending: false })
     .limit(6);
 
@@ -534,7 +505,9 @@ export async function getRecentActivities(): Promise<Activity[]> {
 
 // ─── Mutations ────────────────────────────────────────────────────────────────
 
-export async function createPost(dto: Omit<Post, "id" | "hasChangesRequested" | "workMode">): Promise<Post> {
+export async function createPost(dto: Omit<Post, "id" | "workMode">): Promise<Post> {
+  const { data: { user } } = await supabase.auth.getUser();
+
   const { data: brand, error: brandError } = await supabase
     .from("brands")
     .select("work_mode")
@@ -545,7 +518,7 @@ export async function createPost(dto: Omit<Post, "id" | "hasChangesRequested" | 
 
   const { data, error } = await supabase
     .from("posts")
-    .insert({ id: crypto.randomUUID(), ...postToDbInsert(dto, (brand as { work_mode: string }).work_mode) })
+    .insert({ id: crypto.randomUUID(), ...postToDbInsert(dto, (brand as { work_mode: string }).work_mode, user?.id ?? null) })
     .select()
     .single();
 
@@ -561,6 +534,7 @@ export interface CreateClientPostDto {
   title: string;
   caption: string;
   type: Post["type"];
+  channel: Post["channel"];
   date: string;
   mediaLink?: string;
 }
@@ -588,10 +562,11 @@ export async function createClientPost(dto: CreateClientPostDto): Promise<Post> 
       title:          dto.title,
       content:        dto.caption || null,
       platform:       dto.type,
+      channel:        dto.channel,
       media_link:     dto.mediaLink ?? null,
       scheduled_date: datePart,
       scheduled_time: timePart ?? null,
-      status:         "CLIENT_DRAFT",
+      status:         "bozza_privata",
       work_mode:      "CONSULTANCY",
       internal_notes: null,
       feedback:       null,
@@ -619,6 +594,7 @@ export async function updatePost(id: string, dto: Partial<Post>): Promise<Post> 
   if (dto.title         !== undefined) patch.title          = dto.title;
   if (dto.caption       !== undefined) patch.content        = dto.caption ?? null;
   if (dto.type          !== undefined) patch.platform       = dto.type;
+  if (dto.channel       !== undefined) patch.channel        = dto.channel;
   if (dto.mediaLink     !== undefined) patch.media_link     = dto.mediaLink ?? null;
   if (dto.internalNotes !== undefined) patch.internal_notes = dto.internalNotes ?? null;
   if (dto.feedback      !== undefined) patch.feedback       = dto.feedback ?? null;
@@ -654,37 +630,24 @@ export async function deletePost(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-// Cambio di status — cuore del semaforo e del tasto "Invia al cliente"/"Invia all'SMM".
-// `frontendStatus` è il valore che i componenti React passano (invariato rispetto a prima),
-// la traduzione verso il DB dipende dal work_mode del post (Gestione o Consulenza usano
-// mapping diversi per la stessa azione generica, es. "pending" = invia per revisione).
-// Niente .select() dopo l'update: se il nuovo status è PENDING/DRAFT/CLIENT_DRAFT la RLS
-// del cliente blocca la lettura della riga aggiornata, causando un 406.
+// Cambio di status — cuore del semaforo e del tasto "Invia al cliente"/"Invia all'SMM"/
+// "Sposta in un altro stato". Il valore è identico DB↔frontend (vedi PostStatus in
+// mock-data.ts): chi può scriverlo è deciso da RLS/trigger lato DB, non da una
+// traduzione qui. Niente .select() dopo l'update: se il nuovo status non è più
+// leggibile dal cliente (es. torna "da_modificare"), la RLS blocca la lettura
+// della riga aggiornata, causando un 406.
 // brandId non è necessario qui — viene passato al caller tramite le vars della mutation.
 export async function updatePostStatus(
   id: string,
-  frontendStatus: string,
+  status: PostStatus,
   feedback?: string,
 ): Promise<void> {
-  const { data: current, error: fetchError } = await supabase
-    .from("posts")
-    .select("work_mode")
-    .eq("id", id)
-    .single();
-
-  if (fetchError) throw new Error(fetchError.message);
-
-  const workMode = (current as { work_mode: string | null }).work_mode;
-  const map = workMode === "CONSULTANCY" ? FRONTEND_STATUS_TO_DB_CONSULTANCY : FRONTEND_STATUS_TO_DB_GESTIONE;
-  const dbStatus = map[frontendStatus];
-  if (!dbStatus) throw new Error(`Azione "${frontendStatus}" non valida per un post in modalità ${workMode ?? "FULL_MANAGEMENT"}`);
-
   const { data: { user } } = await supabase.auth.getUser();
 
   const { error } = await supabase
     .from("posts")
     .update({
-      status:           dbStatus,
+      status,
       feedback:         feedback ?? null,
       updated_at:       new Date().toISOString(),
       last_updated_by:  user?.id ?? null,

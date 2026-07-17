@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native'
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { Controller, useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -10,9 +10,9 @@ import { Sheet } from './ui/BottomSheet'
 import { Input } from './ui/Input'
 import { Textarea } from './ui/Textarea'
 import { Button } from './ui/Button'
-import { useCreatePost, useCreateClientPost } from '../src/lib/queries'
+import { useCreatePost, useCreateClientPost, useBrands } from '../src/lib/queries'
 import { useAppStore } from '../src/lib/app-store'
-import type { PostType } from '../src/lib/mock-data'
+import type { Channel, PostType } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -25,29 +25,46 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const POST_TYPES: PostType[] = ['Post', 'Reel', 'Carosello', 'Story']
+// "Carosello" non è più un'opzione in UI (non presente nelle foto di riferimento),
+// ma resta un valore DB valido per i post storici già salvati con quel formato.
+const POST_TYPES: PostType[] = ['Post', 'Reel', 'Story']
+const CHANNELS: { key: Channel; label: string }[] = [
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'facebook', label: 'Facebook' },
+]
 
 interface CreatePostSheetProps {
-  sheetRef: React.RefObject<BottomSheetModal>
-  brandId: string
+  sheetRef: React.RefObject<BottomSheetModal | null>
+  // Brand pre-selezionato (es. aperto dalla scheda di un cliente specifico) —
+  // resta comunque cambiabile dal picker "Cliente" nello sheet. Se omesso (es.
+  // aperto con "Tutti" selezionato in Calendario/Griglia), lo SMM deve sceglierlo.
+  defaultBrandId?: string
   defaultDate?: Date
 }
 
-// Condiviso tra SMM (Gestione, brandId dalla route) e cliente (Consulenza, brandId
-// derivato server-side da useCreateClientPost — il prop brandId resta accettato ma
-// ignorato in quel ramo). "Note interne" è un campo privato SMM, nascosto al cliente.
-export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSheetProps) {
-  const { role } = useAppStore()
+// Condiviso tra SMM (Gestione, picker "Cliente" nello sheet) e cliente (Consulenza,
+// brandId derivato server-side da useCreateClientPost, nessun picker per lui — crea
+// sempre per il proprio unico brand). "Note interne" è un campo privato SMM.
+export function CreatePostSheet({ sheetRef, defaultBrandId, defaultDate }: CreatePostSheetProps) {
+  const { role, userId, smmMode } = useAppStore()
   const isClient = role === 'client'
+  const { data: brands } = useBrands(userId)
+  const filteredBrands = (brands ?? []).filter((b) => b.workMode === smmMode)
   const { mutateAsync: createPost } = useCreatePost()
   const { mutateAsync: createClientPost } = useCreateClientPost()
+  const [targetBrandId, setTargetBrandId] = useState<string | null>(defaultBrandId ?? null)
   const [postType, setPostType] = useState<PostType>('Post')
+  const [channel, setChannel] = useState<Channel>('instagram')
   const [date, setDate] = useState(defaultDate ?? new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
 
   useEffect(() => {
     if (defaultDate) setDate(defaultDate)
   }, [defaultDate])
+
+  useEffect(() => {
+    setTargetBrandId(defaultBrandId ?? null)
+  }, [defaultBrandId])
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -61,23 +78,29 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
   }
 
   const onSubmit = async (data: FormData) => {
+    if (!isClient && !targetBrandId) {
+      Toast.show({ type: 'error', text1: 'Seleziona un cliente' })
+      return
+    }
     try {
       if (isClient) {
         await createClientPost({
           title:     data.title,
           caption:   data.caption ?? '',
           type:      postType,
+          channel,
           date:      isoDate(),
           mediaLink: data.mediaLink || undefined,
         })
       } else {
         await createPost({
-          brandId,
+          brandId: targetBrandId!,
           title:         data.title,
           caption:       data.caption ?? '',
           type:          postType,
+          channel,
           date:          isoDate(),
-          status:        'draft',
+          status:        'bozza_privata',
           mediaLink:     data.mediaLink || undefined,
           internalNotes: data.internalNotes || undefined,
         })
@@ -93,21 +116,65 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
   return (
     <Sheet ref={sheetRef} title="Nuovo post" snapPoints={['95%']} scrollable>
       <View style={styles.form}>
-        {/* Tipo */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Tipo</Text>
-          <View style={styles.typeRow}>
-            {POST_TYPES.map((t) => (
-              <Pressable
-                key={t}
-                style={[styles.typeBtn, postType === t && styles.typeBtnActive]}
-                onPress={() => setPostType(t)}
-              >
-                <Text style={[styles.typeBtnText, postType === t && styles.typeBtnTextActive]}>
-                  {t}
-                </Text>
-              </Pressable>
-            ))}
+        {/* Cliente (solo SMM — il cliente crea sempre per il proprio unico brand) */}
+        {!isClient && (
+          <View style={styles.field}>
+            <Text style={styles.fieldLabel}>Cliente</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.clientRow}>
+                {filteredBrands.map((b) => (
+                  <Pressable
+                    key={b.id}
+                    style={[styles.clientPill, targetBrandId === b.id && styles.typeBtnActive]}
+                    onPress={() => setTargetBrandId(b.id)}
+                  >
+                    <Text
+                      style={[styles.typeBtnText, targetBrandId === b.id && styles.typeBtnTextActive]}
+                      numberOfLines={1}
+                    >
+                      {b.name}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        )}
+
+        {/* Canale + Formato */}
+        <View style={styles.dualRow}>
+          <View style={[styles.field, styles.dualField]}>
+            <Text style={styles.fieldLabel}>Canale</Text>
+            <View style={styles.typeRow}>
+              {CHANNELS.map((c) => (
+                <Pressable
+                  key={c.key}
+                  style={[styles.typeBtn, channel === c.key && styles.typeBtnActive]}
+                  onPress={() => setChannel(c.key)}
+                >
+                  <Text style={[styles.typeBtnText, channel === c.key && styles.typeBtnTextActive]}>
+                    {c.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={[styles.field, styles.dualField]}>
+            <Text style={styles.fieldLabel}>Formato</Text>
+            <View style={styles.typeRow}>
+              {POST_TYPES.map((t) => (
+                <Pressable
+                  key={t}
+                  style={[styles.typeBtn, postType === t && styles.typeBtnActive]}
+                  onPress={() => setPostType(t)}
+                >
+                  <Text style={[styles.typeBtnText, postType === t && styles.typeBtnTextActive]}>
+                    {t}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
 
@@ -214,8 +281,18 @@ export function CreatePostSheet({ sheetRef, brandId, defaultDate }: CreatePostSh
 const styles = StyleSheet.create({
   form: { padding: spacing.lg, gap: spacing.lg },
   field: { gap: spacing.xs },
+  dualRow: { flexDirection: 'row', gap: spacing.md },
+  dualField: { flex: 1 },
   fieldLabel: { ...typography.label, color: colors.text.secondary },
   typeRow: { flexDirection: 'row', gap: spacing.sm },
+  clientRow: { flexDirection: 'row', gap: spacing.sm },
+  clientPill: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderRadius: radius.full,
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
   typeBtn: {
     flex: 1,
     paddingVertical: spacing.sm,

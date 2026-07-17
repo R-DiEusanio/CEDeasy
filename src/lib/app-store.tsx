@@ -22,6 +22,11 @@ interface AppState {
   setSmmMode: (m: SmmMode) => void
   activeBrandId: string | null
   setActiveBrandId: (id: string | null) => void
+  // Cliente selezionato nella riga di pillole condivisa tra le 5 tab SMM
+  // (null = "Tutti"). Distinto da activeBrandId, che è il brand del cliente
+  // loggato quando role === 'client'.
+  selectedBrandId: string | null
+  setSelectedBrandId: (id: string | null) => void
   userId: string | null
   isReady: boolean
 }
@@ -32,6 +37,7 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<Role>('smm')
   const [smmMode, _setSmmMode] = useState<SmmMode>('consulenza')
   const [activeBrandId, setActiveBrandId] = useState<string | null>(null)
+  const [selectedBrandId, setSelectedBrandId] = useState<string | null>(null)
   const [userId, setUserId] = useState<string | null>(null)
   const [isReady, setIsReady] = useState(false)
 
@@ -93,8 +99,13 @@ export function AppStoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo<AppState>(
-    () => ({ role, setRole, smmMode, setSmmMode, activeBrandId, setActiveBrandId, userId, isReady }),
-    [role, smmMode, activeBrandId, userId, isReady]
+    () => ({
+      role, setRole, smmMode, setSmmMode,
+      activeBrandId, setActiveBrandId,
+      selectedBrandId, setSelectedBrandId,
+      userId, isReady,
+    }),
+    [role, smmMode, activeBrandId, selectedBrandId, userId, isReady]
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

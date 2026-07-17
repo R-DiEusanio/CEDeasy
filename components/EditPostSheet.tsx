@@ -12,7 +12,7 @@ import { Textarea } from './ui/Textarea'
 import { Button } from './ui/Button'
 import { useUpdatePost } from '../src/lib/queries'
 import { useAppStore } from '../src/lib/app-store'
-import type { Post, PostType } from '../src/lib/mock-data'
+import type { Channel, Post, PostType } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -25,10 +25,17 @@ const schema = z.object({
 })
 type FormData = z.infer<typeof schema>
 
-const POST_TYPES: PostType[] = ['Post', 'Reel', 'Carosello', 'Story']
+// "Carosello" non è più un'opzione in UI (non presente nelle foto di riferimento),
+// ma resta un valore DB valido per i post storici — vedi typeOptions più sotto,
+// che lo riaggiunge dinamicamente solo se il post in modifica lo usa già.
+const POST_TYPES: PostType[] = ['Post', 'Reel', 'Story']
+const CHANNELS: { key: Channel; label: string }[] = [
+  { key: 'instagram', label: 'Instagram' },
+  { key: 'facebook', label: 'Facebook' },
+]
 
 interface EditPostSheetProps {
-  sheetRef: React.RefObject<BottomSheetModal>
+  sheetRef: React.RefObject<BottomSheetModal | null>
   post: Post | null
   onSaved?: () => void
 }
@@ -41,6 +48,7 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
   const isClient = role === 'client'
   const { mutateAsync: updatePost } = useUpdatePost()
   const [postType, setPostType] = useState<PostType>('Post')
+  const [channel, setChannel] = useState<Channel>('instagram')
   const [date, setDate] = useState(new Date())
   const [showDatePicker, setShowDatePicker] = useState(false)
 
@@ -53,6 +61,7 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
   useEffect(() => {
     if (!post) return
     setPostType(post.type)
+    setChannel(post.channel)
     setDate(new Date(post.date))
     reset({
       title:         post.title,
@@ -70,6 +79,10 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
 
   if (!post) return null
 
+  // Riaggiunge "Carosello" come opzione solo se il post lo usa già (valore
+  // storico), senza riproporlo per tutti i post come faceva prima.
+  const typeOptions = POST_TYPES.includes(post.type) ? POST_TYPES : [...POST_TYPES, post.type]
+
   const onSubmit = async (data: FormData) => {
     try {
       await updatePost({
@@ -78,6 +91,7 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
           title:     data.title,
           caption:   data.caption ?? '',
           type:      postType,
+          channel,
           date:      isoDate(),
           mediaLink: data.mediaLink || undefined,
           // Il cliente non vede mai il campo: non va rimandato in scrittura,
@@ -106,21 +120,40 @@ export function EditPostSheet({ sheetRef, post, onSaved }: EditPostSheetProps) {
           </View>
         )}
 
-        {/* Tipo */}
-        <View style={styles.field}>
-          <Text style={styles.fieldLabel}>Tipo</Text>
-          <View style={styles.typeRow}>
-            {POST_TYPES.map((t) => (
-              <Pressable
-                key={t}
-                style={[styles.typeBtn, postType === t && styles.typeBtnActive]}
-                onPress={() => setPostType(t)}
-              >
-                <Text style={[styles.typeBtnText, postType === t && styles.typeBtnTextActive]}>
-                  {t}
-                </Text>
-              </Pressable>
-            ))}
+        {/* Canale + Formato */}
+        <View style={styles.dualRow}>
+          <View style={[styles.field, styles.dualField]}>
+            <Text style={styles.fieldLabel}>Canale</Text>
+            <View style={styles.typeRow}>
+              {CHANNELS.map((c) => (
+                <Pressable
+                  key={c.key}
+                  style={[styles.typeBtn, channel === c.key && styles.typeBtnActive]}
+                  onPress={() => setChannel(c.key)}
+                >
+                  <Text style={[styles.typeBtnText, channel === c.key && styles.typeBtnTextActive]}>
+                    {c.label}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={[styles.field, styles.dualField]}>
+            <Text style={styles.fieldLabel}>Formato</Text>
+            <View style={styles.typeRow}>
+              {typeOptions.map((t) => (
+                <Pressable
+                  key={t}
+                  style={[styles.typeBtn, postType === t && styles.typeBtnActive]}
+                  onPress={() => setPostType(t)}
+                >
+                  <Text style={[styles.typeBtnText, postType === t && styles.typeBtnTextActive]}>
+                    {t}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
           </View>
         </View>
 
@@ -237,6 +270,8 @@ const styles = StyleSheet.create({
   feedbackLabel: { ...typography.label, color: colors.status.changes.text },
   feedbackText:  { ...typography.body, color: colors.status.changes.text },
   field: { gap: spacing.xs },
+  dualRow: { flexDirection: 'row', gap: spacing.md },
+  dualField: { flex: 1 },
   fieldLabel: { ...typography.label, color: colors.text.secondary },
   typeRow: { flexDirection: 'row', gap: spacing.sm },
   typeBtn: {

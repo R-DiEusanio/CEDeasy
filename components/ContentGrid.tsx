@@ -8,6 +8,7 @@ import {
 } from 'react-native'
 import { ChevronLeft, ChevronRight } from 'lucide-react-native'
 import type { Post } from '../src/lib/mock-data'
+import { STATUS_CONFIG, STATUS_ORDER } from '../src/lib/status-config'
 import { colors } from '../constants/colors'
 import { spacing, radius } from '../constants/spacing'
 import { typography } from '../constants/typography'
@@ -16,18 +17,8 @@ const SCREEN_W = Dimensions.get('window').width
 const CELL_W = Math.floor((SCREEN_W - spacing.lg * 2) / 7)
 const DAY_LABELS = ['L', 'M', 'M', 'G', 'V', 'S', 'D']
 
-const STATUS_CONFIG = {
-  draft:    { label: 'Bozza privata',      color: colors.status.draft.text,    bg: colors.status.draft.bg },
-  pending:  { label: 'In approvazione',    color: colors.status.pending.text,  bg: colors.status.pending.bg },
-  changes:  { label: 'Richiesta modifica', color: colors.status.changes.text,  bg: colors.status.changes.bg },
-  approved: { label: 'Approvato',          color: colors.status.approved.text, bg: colors.status.approved.bg },
-}
-
 function getStatusConfig(post: Post) {
-  if (post.hasChangesRequested) return STATUS_CONFIG.changes
-  if (post.status === 'pending')  return STATUS_CONFIG.pending
-  if (post.status === 'approved') return STATUS_CONFIG.approved
-  return STATUS_CONFIG.draft
+  return STATUS_CONFIG[post.status]
 }
 
 interface Props {
@@ -112,7 +103,7 @@ export function ContentGrid({ posts, brandId, onDayPress, onPostPress }: Props) 
           return (
             <Pressable
               key={day}
-              style={[styles.cell, styles.dayCell, cfg && { backgroundColor: cfg.bg }]}
+              style={[styles.cell, styles.dayCell, cfg && { backgroundColor: cfg.badgeColor }]}
               onPress={() => {
                 if (first) onPostPress?.(first)
                 else onDayPress?.(new Date(year, month, day))
@@ -122,14 +113,14 @@ export function ContentGrid({ posts, brandId, onDayPress, onPostPress }: Props) 
                 {day}
               </Text>
               {first && (
-                <View style={[styles.postChip, { backgroundColor: cfg!.color }]}>
+                <View style={[styles.postChip, { backgroundColor: cfg!.dotColor }]}>
                   <Text style={styles.postChipText} numberOfLines={1}>
                     {first.title}
                   </Text>
                 </View>
               )}
               {extra > 0 && (
-                <Text style={[styles.extraBadge, { color: cfg!.color }]}>
+                <Text style={[styles.extraBadge, { color: cfg!.dotColor }]}>
                   +{extra}
                 </Text>
               )}
@@ -140,12 +131,15 @@ export function ContentGrid({ posts, brandId, onDayPress, onPostPress }: Props) 
 
       {/* Legenda */}
       <View style={styles.legend}>
-        {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-          <View key={key} style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: cfg.color }]} />
-            <Text style={styles.legendLabel}>{cfg.label}</Text>
-          </View>
-        ))}
+        {STATUS_ORDER.map((key) => {
+          const cfg = STATUS_CONFIG[key]
+          return (
+            <View key={key} style={styles.legendItem}>
+              <View style={[styles.legendDot, { backgroundColor: cfg.dotColor }]} />
+              <Text style={styles.legendLabel}>{cfg.label}</Text>
+            </View>
+          )
+        })}
       </View>
     </View>
   )

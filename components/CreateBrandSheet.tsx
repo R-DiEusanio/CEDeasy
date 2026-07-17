@@ -11,13 +11,15 @@ import { Input } from './ui/Input'
 import { Button } from './ui/Button'
 import { useCreateBrand } from '../src/lib/queries'
 import { useAppStore } from '../src/lib/app-store'
-import type { WorkMode } from '../src/lib/mock-data'
+import type { BrandColor, WorkMode } from '../src/lib/mock-data'
+import { BRAND_COLOR_HEX } from '../src/lib/mock-data'
 import { colors } from '../constants/colors'
 import { radius, spacing } from '../constants/spacing'
 import { typography } from '../constants/typography'
 
 const CATEGORIES = ['Ristorazione', 'Benessere', 'Abbigliamento', 'Fitness', 'Tecnologia']
 const EXTRA_CATEGORIES = ['Finanza']
+const BRAND_COLORS: BrandColor[] = ['orange', 'violet', 'blue', 'green']
 
 const WORK_MODES: { value: WorkMode; label: string; hint: string }[] = [
   { value: 'gestione',   label: 'Gestione',   hint: 'Crei tu i post, il cliente li approva.' },
@@ -39,7 +41,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>
 
 interface CreateBrandSheetProps {
-  sheetRef: React.RefObject<BottomSheetModal>
+  sheetRef: React.RefObject<BottomSheetModal | null>
 }
 
 export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
@@ -49,6 +51,7 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
   const [showExtraModal, setShowExtraModal] = useState(false)
   // Default alla modalità della tab attiva in dashboard — modificabile prima di salvare
   const [workMode, setWorkMode] = useState<WorkMode>(smmMode)
+  const [color, setColor] = useState<BrandColor>('orange')
 
   const { control, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -70,10 +73,12 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
         telegramUrl:  data.telegramUrl || undefined,
         smmId:        userId!,
         workMode,
+        color,
       })
       Toast.show({ type: 'success', text1: 'Brand creato!' })
       reset()
       setWorkMode(smmMode)
+      setColor('orange')
       sheetRef.current?.dismiss()
     } catch (e: any) {
       Toast.show({ type: 'error', text1: 'Errore', text2: e.message })
@@ -110,6 +115,24 @@ export function CreateBrandSheet({ sheetRef }: CreateBrandSheetProps) {
             <Input label="Nome brand *" placeholder="Es. Pizzeria Da Mario"
               onChangeText={onChange} onBlur={onBlur} value={value} error={errors.name?.message} />
           )} />
+
+        {/* Colore */}
+        <View style={styles.field}>
+          <Text style={styles.fieldLabel}>Colore</Text>
+          <View style={styles.colorRow}>
+            {BRAND_COLORS.map((c) => (
+              <Pressable
+                key={c}
+                onPress={() => setColor(c)}
+                style={[
+                  styles.colorDot,
+                  { backgroundColor: BRAND_COLOR_HEX[c] },
+                  color === c && styles.colorDotActive,
+                ]}
+              />
+            ))}
+          </View>
+        </View>
 
         <Controller control={control} name="category"
           render={({ field: { onChange, onBlur, value } }) => (
@@ -239,6 +262,15 @@ const styles = StyleSheet.create({
   modeBtnLabel: { ...typography.smallMedium, color: colors.text.secondary },
   modeBtnLabelActive: { color: colors.primary },
   modeHint: { ...typography.small, color: colors.text.muted },
+  colorRow: { flexDirection: 'row', gap: spacing.md },
+  colorDot: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 3,
+    borderColor: 'transparent',
+  },
+  colorDotActive: { borderColor: colors.text.primary },
   socialToggle: {
     flexDirection: 'row',
     alignItems: 'center',

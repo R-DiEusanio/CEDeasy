@@ -51,7 +51,7 @@ export function Button({
 const styles = StyleSheet.create({
   base: {
     height: 46,
-    borderRadius: radius.md,
+    borderRadius: radius.full,
     paddingHorizontal: spacing.xl,
     alignItems: 'center',
     justifyContent: 'center',
@@ -59,11 +59,18 @@ const styles = StyleSheet.create({
   },
   fullWidth: { width: '100%' },
   pressed: { opacity: 0.75 },
-  disabled: { opacity: 0.5 },
+  disabled: { opacity: 0.5, shadowOpacity: 0 },
 
-  primary: { backgroundColor: colors.primary },
+  primary: {
+    backgroundColor: colors.primary,
+    shadowColor: colors.shadow.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 1,
+    shadowRadius: 18,
+    elevation: 4,
+  },
   secondary: {
-    backgroundColor: colors.background,
+    backgroundColor: colors.card,
     borderWidth: 1.5,
     borderColor: colors.primary,
   },

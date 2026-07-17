@@ -4,6 +4,14 @@ import { QueryClient, QueryClientProvider, focusManager } from '@tanstack/react-
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { AppState } from 'react-native'
 import * as SplashScreen from 'expo-splash-screen'
+import { useFonts } from 'expo-font'
+import {
+  Fredoka_400Regular,
+  Fredoka_500Medium,
+  Fredoka_600SemiBold,
+  Fredoka_700Bold,
+} from '@expo-google-fonts/fredoka'
+import { LuckiestGuy_400Regular } from '@expo-google-fonts/luckiest-guy'
 import Toast from 'react-native-toast-message'
 import { AppStoreProvider, useAppStore } from '../src/lib/app-store'
 import { OfflineBanner } from '../components/OfflineBanner'
@@ -26,6 +34,18 @@ focusManager.setEventListener((onFocus) => {
 })
 
 export default function RootLayout() {
+  const [fontsLoaded] = useFonts({
+    Fredoka_400Regular,
+    Fredoka_500Medium,
+    Fredoka_600SemiBold,
+    Fredoka_700Bold,
+    LuckiestGuy_400Regular,
+  })
+
+  // Splash resta visibile finché i font non sono pronti (AuthGuard la nasconde
+  // solo dopo, quando anche il routing è deciso — vedi suo effect)
+  if (!fontsLoaded) return null
+
   return (
     <QueryClientProvider client={queryClient}>
       <AppStoreProvider>

@@ -1,66 +1,95 @@
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import {
-  Animated,
-  Dimensions,
   Modal,
+  NativeScrollEvent,
+  NativeSyntheticEvent,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
 import AsyncStorage from '@react-native-async-storage/async-storage'
-import {
-  Sparkles,
-  Users,
-  PenLine,
-  Layers,
-  ClipboardList,
-  type LucideIcon,
-} from 'lucide-react-native'
+import { Check, FileText } from 'lucide-react-native'
+import { Badge } from './ui/Badge'
+import { STATUS_CONFIG } from '../src/lib/status-config'
 import { colors } from '../constants/colors'
 import { spacing, radius } from '../constants/spacing'
 import { typography } from '../constants/typography'
 
 export const ONBOARDING_KEY = '@cedeasy/onboarding_done'
 
-const { width: SCREEN_W } = Dimensions.get('window')
-
 interface Step {
-  icon: LucideIcon
   title: string
   description: string
+  illustration: () => React.ReactNode
+}
+
+function ClientsIllustration() {
+  return (
+    <View style={illustrationStyles.overlapWrap}>
+      <View style={[illustrationStyles.circle, illustrationStyles.circleP]}>
+        <Text style={illustrationStyles.circleText}>P</Text>
+      </View>
+      <View style={[illustrationStyles.circle, illustrationStyles.circleF]}>
+        <Text style={illustrationStyles.circleText}>F</Text>
+      </View>
+    </View>
+  )
+}
+
+function StatusColorsIllustration() {
+  const statuses = ['bozza_privata', 'da_revisionare', 'approvato', 'pubblicato'] as const
+  return (
+    <View style={illustrationStyles.badgeStack}>
+      {statuses.map((s) => (
+        <Badge key={s} status={s} />
+      ))}
+    </View>
+  )
+}
+
+function SendIllustration() {
+  return (
+    <View style={illustrationStyles.sendRow}>
+      <View style={[illustrationStyles.sendBox, { backgroundColor: STATUS_CONFIG.bozza_privata.badgeColor, borderColor: STATUS_CONFIG.bozza_privata.dotColor }]} />
+      <Text style={illustrationStyles.sendArrow}>→</Text>
+      <View style={[illustrationStyles.sendBox, { backgroundColor: STATUS_CONFIG.da_revisionare.badgeColor, borderColor: STATUS_CONFIG.da_revisionare.dotColor }]} />
+    </View>
+  )
+}
+
+function ApproveIllustration() {
+  return (
+    <View style={illustrationStyles.approveWrap}>
+      <FileText size={64} color={STATUS_CONFIG.da_revisionare.dotColor} strokeWidth={1.5} />
+      <View style={illustrationStyles.approveBadge}>
+        <Check size={18} color="#fff" strokeWidth={3} />
+      </View>
+    </View>
+  )
 }
 
 const STEPS: Step[] = [
   {
-    icon: Sparkles,
-    title: 'Benvenuto su CEDeasy',
-    description:
-      'La tua piattaforma per gestire i contenuti social dei tuoi clienti in modo semplice e collaborativo.',
+    title: 'Tutti i tuoi clienti in un posto solo',
+    description: 'Crea un cliente, invitalo con un link magico e gestisci i suoi contenuti senza fogli sparsi.',
+    illustration: ClientsIllustration,
   },
   {
-    icon: Users,
-    title: 'Aggiungi il tuo primo cliente',
-    description:
-      'Vai nella scheda "Clienti" e tocca + per creare un nuovo brand. Inserisci nome, categoria, contatti e link social.',
+    title: 'Ogni stato ha il suo colore',
+    description: 'Rosso è bozza privata, giallo è in revisione, verde è approvato. Lo stesso colore, ovunque: calendario, liste e report.',
+    illustration: StatusColorsIllustration,
   },
   {
-    icon: PenLine,
-    title: 'Pianifica i contenuti',
-    description:
-      'Dalla dashboard del cliente tocca + per creare un post. Scegli data, tipo di contenuto, caption e note per il cliente.',
+    title: 'Invia al cliente con un tap',
+    description: 'Quando un post è pronto, premi "Invia al cliente": da rosso diventa giallo e lui lo vede subito.',
+    illustration: SendIllustration,
   },
   {
-    icon: Layers,
-    title: 'Gestisci gli stati',
-    description:
-      'Ogni post ha uno stato: Bozza → In revisione → Approvato. Il cliente può richiedere modifiche e tu aggiorni il contenuto.',
-  },
-  {
-    icon: ClipboardList,
-    title: 'Piano d\'azione',
-    description:
-      'Dalla dashboard di ogni cliente trovi il pulsante "Strategia" per gestire il piano d\'azione con task e sottotask.',
+    title: 'Il cliente approva in due tap',
+    description: 'Approva o chiede una modifica con opzioni rapide. Niente telefonate, niente vocali infiniti.',
+    illustration: ApproveIllustration,
   },
 ]
 
@@ -71,34 +100,18 @@ interface Props {
 
 export function OnboardingModal({ visible, onDone }: Props) {
   const [step, setStep] = useState(0)
-  const slideAnim = useRef(new Animated.Value(0)).current
+  const scrollRef = useRef<ScrollView>(null)
+  const [screenWidth, setScreenWidth] = useState(0)
 
-  const animateTo = (nextStep: number, direction: 1 | -1) => {
-    Animated.timing(slideAnim, {
-      toValue: -direction * SCREEN_W,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
-      setStep(nextStep)
-      slideAnim.setValue(direction * SCREEN_W)
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }).start()
-    })
+  const goTo = (index: number) => {
+    scrollRef.current?.scrollTo({ x: index * screenWidth, animated: true })
+    setStep(index)
   }
 
-  const next = () => {
-    if (step < STEPS.length - 1) {
-      animateTo(step + 1, 1)
-    } else {
-      finish()
-    }
-  }
-
-  const prev = () => {
-    if (step > 0) animateTo(step - 1, -1)
+  const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (!screenWidth) return
+    const index = Math.round(e.nativeEvent.contentOffset.x / screenWidth)
+    setStep(index)
   }
 
   const finish = async () => {
@@ -107,54 +120,81 @@ export function OnboardingModal({ visible, onDone }: Props) {
   }
 
   const isLast = step === STEPS.length - 1
-  const current = STEPS[step]
-  const Icon = current.icon
 
   return (
     <Modal visible={visible} transparent={false} animationType="fade" statusBarTranslucent>
-      <View style={styles.screen}>
-        {/* Skip */}
-        {!isLast && (
-          <Pressable style={styles.skipBtn} onPress={finish} hitSlop={12}>
-            <Text style={styles.skipLabel}>Salta</Text>
-          </Pressable>
+      <View style={styles.screen} onLayout={(e) => setScreenWidth(e.nativeEvent.layout.width)}>
+        <Pressable style={styles.skipBtn} onPress={finish} hitSlop={12}>
+          <Text style={styles.skipLabel}>Salta</Text>
+        </Pressable>
+
+        {screenWidth > 0 && (
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={onScrollEnd}
+            style={styles.scroll}
+          >
+            {STEPS.map((s, i) => (
+              <View key={i} style={[styles.stepContent, { width: screenWidth }]}>
+                <View style={styles.illustrationWrap}>{s.illustration()}</View>
+                <Text style={styles.title}>{s.title}</Text>
+                <Text style={styles.description}>{s.description}</Text>
+              </View>
+            ))}
+          </ScrollView>
         )}
 
-        {/* Step content */}
-        <Animated.View
-          style={[styles.stepContent, { transform: [{ translateX: slideAnim }] }]}
-        >
-          <View style={styles.iconWrap}>
-            <Icon size={48} color={colors.primary} strokeWidth={1.5} />
-          </View>
-          <Text style={styles.title}>{current.title}</Text>
-          <Text style={styles.description}>{current.description}</Text>
-        </Animated.View>
-
-        {/* Dots */}
         <View style={styles.dots}>
           {STEPS.map((_, i) => (
-            <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+            <Pressable key={i} onPress={() => goTo(i)} hitSlop={8}>
+              <View style={[styles.dot, i === step && styles.dotActive]} />
+            </Pressable>
           ))}
         </View>
 
-        {/* Navigation */}
-        <View style={styles.nav}>
-          {step > 0 ? (
-            <Pressable style={styles.backBtn} onPress={prev} hitSlop={8}>
-              <Text style={styles.backLabel}>Indietro</Text>
-            </Pressable>
-          ) : (
-            <View />
-          )}
-          <Pressable style={styles.nextBtn} onPress={next}>
-            <Text style={styles.nextLabel}>{isLast ? 'Inizia' : 'Avanti'}</Text>
-          </Pressable>
-        </View>
+        <Pressable style={styles.nextBtn} onPress={() => (isLast ? finish() : goTo(step + 1))}>
+          <Text style={styles.nextLabel}>{isLast ? 'Inizia!' : 'Avanti'}</Text>
+        </Pressable>
       </View>
     </Modal>
   )
 }
+
+const illustrationStyles = StyleSheet.create({
+  overlapWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  circle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  circleP: { backgroundColor: '#F5A623' },
+  circleF: { backgroundColor: '#6C5CE7', marginLeft: -20 },
+  circleText: { ...typography.h2, color: '#fff' },
+
+  badgeStack: { gap: spacing.sm, alignItems: 'flex-start' },
+
+  sendRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  sendBox: { width: 56, height: 72, borderRadius: radius.lg, borderWidth: 2 },
+  sendArrow: { fontSize: 28, color: colors.text.muted },
+
+  approveWrap: { alignItems: 'center', justifyContent: 'center' },
+  approveBadge: {
+    position: 'absolute',
+    bottom: -4,
+    right: -4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: colors.success,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+})
 
 const styles = StyleSheet.create({
   screen: {
@@ -162,31 +202,27 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     paddingTop: 60,
     paddingBottom: 48,
-    paddingHorizontal: spacing['2xl'],
     justifyContent: 'space-between',
   },
   skipBtn: {
     alignSelf: 'flex-end',
     padding: spacing.sm,
+    paddingHorizontal: spacing.lg,
   },
   skipLabel: {
     ...typography.bodyMedium,
-    color: colors.text.muted,
+    color: colors.primary,
   },
 
-  // content
+  scroll: { flexGrow: 0 },
   stepContent: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: spacing.xl,
-    paddingHorizontal: spacing.lg,
+    paddingHorizontal: spacing['2xl'],
   },
-  iconWrap: {
-    width: 96,
-    height: 96,
-    borderRadius: radius.full,
-    backgroundColor: colors.primaryLight,
+  illustrationWrap: {
+    minHeight: 96,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -202,10 +238,10 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
 
-  // dots
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
+    alignItems: 'center',
     gap: spacing.sm,
     paddingVertical: spacing.xl,
   },
@@ -220,28 +256,16 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
 
-  // nav
-  nav: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  backBtn: {
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-  },
-  backLabel: {
-    ...typography.bodyMedium,
-    color: colors.text.secondary,
-  },
   nextBtn: {
     backgroundColor: colors.primary,
     paddingVertical: spacing.md,
-    paddingHorizontal: spacing['2xl'],
+    marginHorizontal: spacing['2xl'],
     borderRadius: radius.full,
+    alignItems: 'center',
   },
   nextLabel: {
     ...typography.bodyMedium,
     color: colors.primaryForeground,
+    fontWeight: '700',
   },
 })
